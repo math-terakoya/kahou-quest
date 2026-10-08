@@ -161,6 +161,7 @@ padding: 10px; text-align: center; font-family: 'Times New Roman', 'Hiragino Min
 }
 #card.hidden { display: none; }
 #card .ca { color: #ffd84a; }
+#card .nw { display: inline-block; white-space: nowrap; }
 #game.boss-mid #card { border-color: #ff5a5a; background: #1c0610; }
 #game.boss-final #card { border-color: #ffcc33; background: #1a1404; }
 #btnHint.hidden { display: none; }
@@ -199,6 +200,7 @@ padding: 8px 18px; font-size: 13px; letter-spacing: 2px; cursor: pointer; margin
 .chap .stars .dim { color: #444; }
 .how-btn.hidden { display: none; }
 #problem .expr.exam { font-size: 14px; text-align: left; line-height: 1.6; }
+#problem .nw { display: inline-block; white-space: nowrap; }   /* 式は 行の 途中で 切らない */
 /* — ボス戦 — */
 #game.boss-mid .rpg-window { border-color: #ff5a5a; box-shadow: 0 0 0 3px #000, 0 0 0 5px #ff5a5a; }
 #game.boss-final .rpg-window { border-color: #ffcc33; box-shadow: 0 0 0 3px #000, 0 0 0 5px #ffcc33; }
@@ -620,7 +622,7 @@ function build(lv, kind, prm, rng, opt = {}) {
   const T = {
     form: ['▼ 加法定理の かたちは？', q.fn ? lhs(q.fn, q.op) + ' ＝ ？' : ''],
     formRev: ['▼ どの 式に まとまる？', q.fn ? expand(q.fn, q.op, degA, degB) + ' ＝ ？' : ''],
-    split: ['▼ 角を どう わける？', fA + ' を 求める。' + A + ' ＝ ？'],
+    split: ['▼ 角を どう わける？', fA + ' を 加法定理で 求める。' + A + ' を 値の わかる 2つの 角で 表すと？'],
     pair: ['▼ 符号は？', 'α は 第' + q.qa + '象限、β は 第' + q.qb + '象限。' + q.fa + 'α と ' + q.fb + 'β の 符号は？'],
     dsign: ['▼ 符号は？', 'α が 第' + q.q + '象限の とき、sin2α ＝ 2sinα cosα の 符号は？'],
     dform: ['▼ 2倍角の かたちは？', q.fn + twice(q.h) + ' ＝ ？'],
@@ -640,7 +642,7 @@ function build(lv, kind, prm, rng, opt = {}) {
     const E = {
       form: ['加法定理に より、' + (q.fn ? lhs(q.fn, q.op) : '') + ' を 展開 した 式は 次の どれか。'],
       formRev: ['次の 式を 1つの 三角関数で 表せ。　' + (q.fn ? expand(q.fn, q.op, degA, degB) : '')],
-      split: ['加法定理を 用いて ' + fA + ' の 値を 求める。' + A + ' の 分け方 として 正しい ものは どれか。'],
+      split: ['加法定理を 用いて ' + fA + ' の 値を 求める。' + A + ' を 値の わかる 2つの 角の 和か 差で 表した もの として 正しい ものは どれか。'],
       pair: q.mode === 'pair' ? ['α の 動径が 第' + q.qa + '象限、β の 動径が 第' + q.qb + '象限に あり、' + other(q.fa) + 'α ＝ ' + sv(other(q.fa), q.qa, q.va) + '、' + other(q.fb) + 'β ＝ ' +
               sv(other(q.fb), q.qb, q.vb) + ' の とき。' + lhs(q.tgt, q.op) + ' を 求める とき、' + q.fa + 'α と ' + q.fb + 'β の 符号の 組は どれか。'] : [''],
       dsign: q.mode === 'dsign' ? [QRANGE[q.q] + ' で ' + q.know + 'α ＝ ' + sv(q.know, q.q, q.va) + ' の とき、sin2α ＝ 2sinα cosα の 符号を 考える。正しい ものは どれか。'] : [''],
@@ -681,7 +683,7 @@ function classify(p, ans) { return { types: p.options[ans.opt].types.slice() }; 
 const TYPE_TEXT = {
   sign: '＋ と − が はんたい', swap: 'sin と cos（の かたち）を とりちがえた',
   naive: 'そのまま わけたり 2倍 したり している（そうは ならない）', frac: '分子と 分母が 逆',
-  coef: '2 を わすれた', unknown: '値を 知らない 角（15° など）が はいっている',
+  coef: '2 を わすれた', unknown: '式は 正しいが、値を 知らない 角（15° ＝ π/12 など）が はいっている',
   value: 'たしても（ひいても）もとの 角に ならない', pick: 'わかっていない ほうの 値が いる 形を えらんだ',
   pyth: 'sin² ＋ cos² ＝ 1 と とりちがえた', range: 'tan の 値は あうが、範囲に 入っていない', plus: 'なす角は 角の 差。和の 式（tan(α ＋ β)）を えらんだ', tanv: 'tan の 値が ちがう 角（π/6 は √3/3、π/4 は 1、π/3 は √3）', inv: '傾きを 逆数に した',
   acute: 'なす角は 0 ＜ θ ＜ π/2（鋭角）。鈍角の ほうを えらんだ', size: '大きさ（1 に 近いか 0 に 近いか）が ちがう', scatter: 'えらびかたが ばらばら',
@@ -911,9 +913,24 @@ function bossWarn(final) {
   el.textContent = final ? '⚠ BOSS ⚠' : '⚠ 中ボス ⚠';
   gameEl.appendChild(el); setTimeout(() => el.remove(), 2000);
 }
+// 式は 1行に まとめる：問題集の 文の「　」の あとの 式は 次の 行に、式だけの 問題は まるごと。はみ出す ときは 字を 小さく
+const FORMULA_ONLY = ['form', 'formRev', 'dform', 'drev', 'est', 'tanAng'];
 function renderProblem() {
-  $('problemLabel').textContent = p().label; $('problemExpr').innerHTML = mathHTML(p().display, true);
-  $('problemExpr').classList.toggle('exam', !!p().exam);
+  const q = p(), d = q.display, el = $('problemExpr');
+  $('problemLabel').textContent = q.label;
+  const cut = d.indexOf('　');
+  if (cut >= 0) el.innerHTML = mathHTML(d.slice(0, cut), true) + '<br><span class="nw">' + mathHTML(d.slice(cut + 1), true) + '</span>';
+  else if (!q.exam && FORMULA_ONLY.includes(q.mode)) el.innerHTML = '<span class="nw">' + mathHTML(d, true) + '</span>';
+  else el.innerHTML = mathHTML(d, true);
+  el.classList.toggle('exam', !!q.exam);
+  fitFormula();
+}
+function fitFormula() {
+  const el = $('problemExpr'), nw = el.querySelector('.nw');
+  if (!nw) return;
+  nw.style.fontSize = '';
+  let size = parseFloat(getComputedStyle(nw).fontSize);
+  while (nw.scrollWidth > el.clientWidth && size > 10) { size -= 1; nw.style.fontSize = size + 'px'; }
 }
 function show(el, on) { el.classList.toggle('hidden', !on); }
 function renderControls() {
@@ -948,13 +965,19 @@ function resizePlane() {
   DPR = Math.min(window.devicePixelRatio || 1, 3);
   canvas.style.width = W + 'px'; canvas.style.height = Math.round(W * ASPECT) + 'px';
   canvas.width = Math.round(W * DPR); canvas.height = Math.round(W * ASPECT * DPR);
-  card.style.width = W + 'px'; card.style.height = Math.round(W * ASPECT) + 'px';
-  draw(); placeBtnHint();
+  card.style.width = Math.max(160, wMax) + 'px'; card.style.height = Math.max(40, Math.min(hMax, Math.round(W * ASPECT))) + 'px';   // 式の カードは 横いっぱい
+  draw(); placeBtnHint(); if (p()) fitFormula();
 }
 const YEL = '#ffd84a', BLUE = '#5b8cff', RED = '#ff7a7a';
 // 式の カード：問題の 式を 大きく。答えの ときは 正しい 式を きいろで
 function drawCard(q) {
-  card.innerHTML = '<div class="' + (state.reveal ? 'ca' : 'cq') + '">' + mathHTML(state.reveal ? q.card.a : q.card.q, true) + '</div>';
+  // 1行ずつ 折り返さずに。はみ出す ときは 字を 小さく
+  const lines = (state.reveal ? q.card.a : q.card.q).split('\n');
+  card.innerHTML = '<div class="' + (state.reveal ? 'ca' : 'cq') + '">' + lines.map(l => '<span class="nw">' + mathHTML(l, true) + '</span>').join('<br>') + '</div>';
+  card.style.fontSize = '';
+  let size = parseFloat(getComputedStyle(card).fontSize);
+  const room = card.clientWidth - 20, wide = () => [...card.querySelectorAll('.nw')].some(e => e.scrollWidth > room);
+  while (wide() && size > 11) { size -= 1; card.style.fontSize = size + 'px'; }
 }
 // 傾きの 文字 → 数
 function mval(m) {
