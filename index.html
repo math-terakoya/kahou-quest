@@ -384,7 +384,7 @@ function expand(fn, op, a = 'α', b = 'β') {
   return '{tan' + a + ' ' + pm(op) + ' tan' + b + '|1 ' + pm(-op) + ' tan' + a + ' tan' + b + '}';
 }
 const lhs = (fn, op) => fn + '(α ' + pm(op) + ' β)';
-const twice = h => (h === '2α' ? '4α' : '2α');   // 2倍の 角
+const twice = h => '2' + h;   // 2倍の 角
 // 2倍角：cs ＝ cos² − sin²、c ＝ 2cos² − 1、s ＝ 1 − 2sin²、sc ＝ 2sin cos、t ＝ tan
 function dbl(k, a = 'α') {
   return {
@@ -489,8 +489,8 @@ function genPrm(lv, kind, rng, opt) {
   }
   if (lv === 4) {
     if (kind === 'rev') return { mode: 'drev', k: pick(rng, ['sc', 'cs', 'c', 's', 't']), x: boss ? pick(rng, [15, 75, 67.5]) : null };   // 22.5° は 2倍が 45° で sin と cos が 同じ 値に なるので 使わない
-    // h：もとの 角（α → 2α、2α → 4α）
-    if (rng() < 0.6) { const fn = pick(rng, FNS); return { mode: 'dform', fn, k: fn === 'cos' ? pick(rng, ['cs', 'c', 's']) : fn === 'sin' ? 'sc' : 't', h: pick(rng, ['α', '2α']) }; }
+    // h：角の 文字（α か θ。まちがえた あと 同じ 公式を 別の 文字で たしかめる）
+    if (rng() < 0.6) { const fn = pick(rng, FNS); return { mode: 'dform', fn, k: fn === 'cos' ? pick(rng, ['cs', 'c', 's']) : fn === 'sin' ? 'sc' : 't', h: pick(rng, ['α', 'θ']) }; }
     return { mode: 'dpick', know: pick(rng, ['sin', 'cos']), va: ri(rng, 0, FR.length - 1) };
   }
   if (lv === 6) {   // なす角：傾きを よむ → tan(β − α) の 式 → 鋭角を えらぶ
@@ -632,7 +632,7 @@ function build(lv, kind, prm, rng, opt = {}) {
     tanAng: ['▼ 角は どれ？', q.v ? 'tanθ ＝ ' + q.v + '、' + RANGES[q.r][2] + ' の とき θ ＝ ？' : ''],
     slope: ['▼ 傾きは？', q.l1 ? '直線 ' + lineText(...q.l1) + ' の 傾きは？' : ''],
     nasu: ['▼ なす角の 式は？', typeof q.k === 'number' ? lineY(NASU[q.k][0]) + '、' + lineY(NASU[q.k][1]) + ' が x軸と なす角を α、β と する。tan(β − α) ＝ ？' : ''],
-    acute: ['▼ なす角は？', typeof q.k === 'number' ? 'tan(β − α) ＝ ' + nasuV(q.k) + ' と なった。2直線の なす角 θ（0 ＜ θ ＜ π/2）は？' : ''],
+    acute: ['▼ なす角は？', typeof q.k === 'number' ? lineY(NASU[q.k][0]) + '、' + lineY(NASU[q.k][1]) + ' と x軸の なす角を α、β と すると tan(β − α) ＝ ' + nasuV(q.k) + '。なす角 θ（0 ＜ θ ＜ π/2）は？' : ''],
   }[q.mode];
   [p.label, p.display] = T;
   // 図（カード）に 大きく 出す 式と、答えの 式
@@ -712,11 +712,11 @@ function reasonLines(p) {
   if (q.mode === 'dsign') { L.push(SIGN_LINE(q.q)); L.push('→ sin2α ＝ ' + right); }
   if (q.mode === 'dform' || q.mode === 'dpick' || q.mode === 'drev') {
     const fn = q.mode === 'dform' ? q.fn : q.mode === 'dpick' ? 'cos' : DBL_OF[q.k];
-    if (fn === 'sin') L.push('sin2α ＝ sin(α ＋ α) ＝ sinα cosα ＋ cosα sinα ＝ 2sinα cosα');
-    if (fn === 'cos') L.push('cos2α ＝ cos²α − sin²α ＝ 2cos²α − 1 ＝ 1 − 2sin²α（sin²α ＋ cos²α ＝ 1 で 書きかえ）');
-    if (fn === 'tan') L.push('tan2α ＝ tan(α ＋ α) ＝ {2tanα|1 − tan²α}');
+    const v = q.mode === 'dform' ? q.h : 'α', V = t => t.replace(/α/g, v);   // 問題の 文字で 書く
+    if (fn === 'sin') L.push(V('sin2α ＝ sin(α ＋ α) ＝ sinα cosα ＋ cosα sinα ＝ 2sinα cosα'));
+    if (fn === 'cos') L.push(V('cos2α ＝ cos²α − sin²α ＝ 2cos²α − 1 ＝ 1 − 2sin²α（sin²α ＋ cos²α ＝ 1 で 書きかえ）'));
+    if (fn === 'tan') L.push(V('tan2α ＝ tan(α ＋ α) ＝ {2tanα|1 − tan²α}'));
     if (q.mode === 'dpick') L.push(q.know + 'α だけで 書ける 形を つかう');
-    if (q.mode === 'dform' && q.h === '2α') L.push('α を 2α に かえても おなじ（4α ＝ 2 × 2α）');
     L.push('→ ' + p.card.a);
   }
   if (q.mode === 'tanAng') {
@@ -980,6 +980,7 @@ function drawCard(q) {
   while (wide() && size > 11) { size -= 1; card.style.fontSize = size + 'px'; }
 }
 // 傾きの 文字 → 数
+const lineY = m => 'y ＝ ' + (m.includes(' ') ? '(' + m + ')' : m === '1' ? '' : m === '−1' ? '−' : m) + 'x';
 function mval(m) {
   const t = m.replace(/−/g, '-').replace(/ ＋ /g, '+').replace(/√3/g, 'R');
   const neg = t.startsWith('-'), b = neg ? t.slice(1) : t;
@@ -1007,10 +1008,15 @@ function drawLines(ctx, q, d, W, H) {
   const [m1, m2] = C.NASU[m.k].map(mval);
   line(m1, 0, BLUE, 2.2); line(m2, 0, RED, 2.2);
   ctx.font = 'bold ' + (12 * d) + 'px serif'; ctx.textBaseline = 'middle';
-  [[m1, BLUE, 'α'], [m2, RED, 'β']].forEach(([k, col, nm]) => {
+  // 線の 式と α・β（枠から はみ出さない。2つが かさなる ときは 下へ ずらす）
+  const labs = [[m1, BLUE, 'α'], [m2, RED, 'β']].map(([k, col, nm]) => {
     const t = Math.atan(k), r = H * 0.42, x = cx + Math.cos(t) * r, y = cy - Math.sin(t) * r;
-    ctx.fillStyle = col; ctx.textAlign = 'left'; ctx.fillText(nm === 'α' ? 'm₁' : 'm₂', x + 4 * d, y);
+    const lab = lineY(C.NASU[m.k][nm === 'α' ? 0 : 1]) + '（' + nm + '）', tw = ctx.measureText(lab).width;
+    return { lab, col, x: Math.max(4 * d, Math.min(x + 4 * d, W - 4 * d - tw)), y: Math.max(10 * d, Math.min(H - 10 * d, y)), tw };
   });
+  const [A, B] = labs;
+  if (Math.abs(A.y - B.y) < 16 * d && A.x < B.x + B.tw && B.x < A.x + A.tw) { const lo = A.y > B.y ? A : B, hi = lo === A ? B : A; lo.y = hi.y + 16 * d; }
+  labs.forEach(L => { ctx.fillStyle = L.col; ctx.textAlign = 'left'; ctx.fillText(L.lab, L.x, L.y); });
   if (state.reveal) {   // 2直線の あいだの 鋭角
     let a1 = Math.atan(m1), a2 = Math.atan(m2);
     if (Math.abs(a2 - a1) > Math.PI / 2) { if (a1 < a2) a1 += Math.PI; else a2 += Math.PI; }
