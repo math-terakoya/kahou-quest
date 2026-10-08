@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:;">
+<title>加法定理クエスト ～数学Ⅱの章～</title>
+<style>
+  /* ===================== レトロRPG風CSS（領域クエストと共通） ===================== */
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  html, body {
+    height: 100%;
+    background: #000;
+    font-family: 'Courier New', 'ＭＳ ゴシック', 'Osaka-Mono', monospace;
+    color: #fff;
+    overflow: hidden;
+  }
+  body { display: flex; align-items: center; justify-content: center; font-feature-settings: "palt"; }
+  #game {
+    width: 100%;
+    max-width: 480px;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 900px;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    border: 2px solid #333;
+    overflow: hidden;
+  }
+
+.rpg-window {
+background: #000;
+border: 3px solid #fff;
+box-shadow: 0 0 0 3px #000, 0 0 0 5px #fff;
+padding: 8px;
+margin: 6px 8px;
+position: relative;
+}
+
+#status {
+display: grid;
+grid-template-columns: 1fr 1fr;
+column-gap: 14px;
+padding: 4px 10px;
+font-size: 12px;
+line-height: 1.7;
+flex-shrink: 0;
+}
+#status .row { display: flex; justify-content: space-between; }
+#status .label { color: #ffff00; letter-spacing: 1px; }
+#status .value { color: #fff; letter-spacing: 1px; }
+#status .wide { grid-column: 1 / -1; }
+#progressDisplay { letter-spacing: 0; }
+.hearts { letter-spacing: 2px; color: #ff4444; }
+.hearts .empty { color: #444; }
+
+#battle {
+display: grid;
+grid-template-columns: 64px 1fr;
+align-items: center;
+gap: 6px;
+padding: 6px 8px;
+flex-shrink: 0;
+}
+#enemy { text-align: center; }
+#monster {
+font-size: 38px;
+line-height: 1.1;
+display: inline-block;
+transition: transform 0.15s, opacity 0.3s;
+text-shadow: 0 0 8px rgba(255,255,255,0.3);
+}
+#monster.boss { animation: bossFloat 2s ease-in-out infinite; text-shadow: 0 0 12px rgba(255,220,0,0.8); }
+@keyframes bossFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+#monster.hit { animation: hit 0.3s; }
+@keyframes hit {
+0%, 100% { transform: translateX(0); filter: brightness(1); }
+20% { transform: translateX(-8px); filter: brightness(3) hue-rotate(180deg); }
+40% { transform: translateX(8px); filter: brightness(3) hue-rotate(180deg); }
+60% { transform: translateX(-5px); filter: brightness(3); }
+80% { transform: translateX(5px); }
+}
+#monster.dying { animation: die 0.8s forwards; }
+@keyframes die {
+0% { opacity: 1; transform: scale(1); }
+50% { opacity: 0.7; transform: scale(1.1); filter: brightness(3); }
+100% { opacity: 0; transform: scale(0.3) rotate(180deg); }
+}
+#monster.miss-dmg { animation: miss 0.4s; }
+@keyframes miss { 0%, 100% { transform: translateX(0); } 50% { transform: scale(1.08); filter: brightness(1.3) sepia(0.3); } }
+#monsterName { font-size: 10px; color: #ffff00; letter-spacing: 1px; white-space: nowrap; }
+#problem { text-align: center; min-width: 0; }
+#problem .label { color: #ffff00; font-size: 11px; letter-spacing: 1px; margin-bottom: 3px; }
+#problem .expr {
+color: #fff;
+font-size: 18px;
+font-family: 'Times New Roman', 'Hiragino Mincho ProN', serif;
+letter-spacing: 0.5px;
+line-height: 1.35;
+}
+#skipTut {
+position: absolute; top: 4px; right: 6px;
+background: #000; color: #aaa; border: 1px solid #666;
+font-family: inherit; font-size: 10px; padding: 2px 6px; cursor: pointer;
+}
+#skipTut.hidden { display: none; }
+
+#planeWrap { flex: 1 1 0; min-height: 0; position: relative; overflow: hidden; }
+#plane {
+position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+border: 2px solid #fff; touch-action: manipulation; cursor: pointer;
+}
+
+#message {
+min-height: 48px;
+max-height: 30vh;
+max-height: 30dvh;
+overflow-y: auto;
+font-size: 12px;
+line-height: 1.55;
+letter-spacing: 0;
+white-space: pre-wrap;
+flex-shrink: 0;
+padding: 6px 10px;
+}
+
+/* — ボタン（2列。出す・隠すは問題の種類で切りかえ） — */
+#controls { padding: 2px 8px 8px; flex-shrink: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.key {
+background: #000; border: 2px solid #fff; color: #fff;
+font-family: inherit; font-size: 15px; font-weight: bold;
+padding: 6px 4px; cursor: pointer; text-align: center; line-height: 1.25;
+min-height: 44px; touch-action: manipulation;
+}
+.key.hidden { display: none; }
+.key:active { transform: translateY(1px); }
+.key.on { background: #fff; color: #000; }
+.key.full { grid-column: 1 / -1; }
+.key.submit { background: #004488; color: #ffff00; }
+.key.submit:disabled { background: #222; color: #666; border-color: #666; cursor: default; }
+.key.opt { font-family: 'Times New Roman', 'Hiragino Mincho ProN', serif; font-weight: normal; font-size: 15px; }
+.key.right { background: #005522; color: #fff; border-color: #44ff88; }
+.key.wrong { background: #551111; color: #fff; border-color: #ff4444; }
+.key .eq { display: block; font-size: 10px; font-weight: normal; letter-spacing: 1px; opacity: 0.85; }
+.key.pulse { animation: pulse 0.9s ease-in-out infinite; }
+@keyframes pulse { 50% { background: #ffff00; color: #000; border-color: #ffff00; box-shadow: 0 0 0 3px #ffff00; } }
+
+/* — TeX 風の分数と根号（外から読み込まずに描く） — */
+.fr { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; font-size: 0.78em; line-height: 1.08; margin: 0 2px; }
+.fr > .nu { border-bottom: 1.5px solid currentColor; padding: 0 3px 1px; }
+.fr > .de { padding: 1px 3px 0; }
+.rt { white-space: nowrap; }
+.rad { border-top: 1.5px solid currentColor; padding: 0 1px; margin-left: -1px; }
+/* — 式の カード — */
+#card {
+position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+border: 2px solid #fff; background: #000a18; display: flex; align-items: center; justify-content: center;
+padding: 10px; text-align: center; font-family: 'Times New Roman', 'Hiragino Mincho ProN', serif; font-size: 22px; line-height: 1.6;
+}
+#card.hidden { display: none; }
+#card .ca { color: #ffd84a; }
+#game.boss-mid #card { border-color: #ff5a5a; background: #1c0610; }
+#game.boss-final #card { border-color: #ffcc33; background: #1a1404; }
+#btnHint.hidden { display: none; }
+#btnHint {
+position: absolute; z-index: 60; pointer-events: none; font-size: 30px;
+transform: translate(-50%, -100%); animation: tapDown 0.8s ease-in-out infinite;
+}
+@keyframes tapDown { 50% { margin-top: 6px; } }
+
+/* — オーバーレイ — */
+.overlay {
+position: absolute; inset: 0; background: #000;
+display: flex; flex-direction: column; align-items: center; justify-content: center;
+padding: 24px; z-index: 100; text-align: center;
+}
+.overlay.hidden { display: none; }
+.overlay h1 { font-size: 28px; color: #ffff00; letter-spacing: 3px; margin-bottom: 20px; text-shadow: 3px 3px 0 #884400; line-height: 1.4; }
+.overlay p { font-size: 14px; color: #fff; line-height: 2; margin-bottom: 16px; letter-spacing: 1px; }
+.overlay .sub { color: #aaa; font-size: 12px; }
+.overlay .start-btn {
+background: #000; border: 3px solid #fff; box-shadow: 0 0 0 3px #000, 0 0 0 5px #fff;
+color: #ffff00; padding: 14px 28px; font-size: 16px; letter-spacing: 3px; cursor: pointer; margin-top: 20px; font-family: inherit;
+}
+.overlay .start-btn:active { background: #fff; color: #000; }
+.overlay .how-btn {
+background: #000; border: 2px solid #888; color: #ccc;
+padding: 8px 18px; font-size: 13px; letter-spacing: 2px; cursor: pointer; margin-top: 18px; font-family: inherit;
+}
+.overlay .hero { font-size: 64px; margin-bottom: 12px; }
+#chapterList { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 360px; }
+.chap { background: #000; border: 2px solid #fff; color: #fff; font-family: inherit; font-size: 14px; padding: 8px 10px; text-align: left; cursor: pointer; }
+.chap .unit { display: block; font-size: 11px; color: #aaa; margin-top: 2px; }
+.chap.locked { color: #666; border-color: #444; cursor: default; }
+.chap.reset { border-color: #888; color: #ccc; margin-top: 8px; }
+.chap .stars { float: right; color: #ffd84a; letter-spacing: 1px; }
+.chap .stars .dim { color: #444; }
+.how-btn.hidden { display: none; }
+#problem .expr.exam { font-size: 14px; text-align: left; line-height: 1.6; }
+/* — ボス戦 — */
+#game.boss-mid .rpg-window { border-color: #ff5a5a; box-shadow: 0 0 0 3px #000, 0 0 0 5px #ff5a5a; }
+#game.boss-final .rpg-window { border-color: #ffcc33; box-shadow: 0 0 0 3px #000, 0 0 0 5px #ffcc33; }
+#game.boss-mid #plane { border-color: #ff5a5a; }
+#game.boss-final #plane { border-color: #ffcc33; }
+.boss-warn {
+position: absolute; left: 0; right: 0; top: 38%; z-index: 40; pointer-events: none; text-align: center;
+font-size: 34px; font-weight: bold; letter-spacing: 4px; color: #fff; background: rgba(180,0,0,0.85);
+padding: 14px 0; text-shadow: 3px 3px 0 #400; animation: warn 2s forwards;
+}
+.boss-warn.final { background: rgba(170,120,0,0.9); text-shadow: 3px 3px 0 #430; }
+@keyframes warn { 0%, 20%, 40%, 60% { opacity: 1; } 10%, 30%, 50% { opacity: 0.35; } 85% { opacity: 1; } 100% { opacity: 0; } }
+.level-up.crit { color: #ff9900; font-size: 26px; text-shadow: 3px 3px 0 #662200, 0 0 18px #ff6600; }
+.overlay .points {
+text-align: left; border: 3px solid #fff; box-shadow: 0 0 0 3px #000, 0 0 0 5px #fff;
+padding: 12px 14px; margin: 4px 0 8px; font-size: 13px; line-height: 2; letter-spacing: 0.5px;
+}
+.overlay .points b { color: #ffff00; }
+
+.dmg-float { position: absolute; font-size: 24px; font-weight: bold; pointer-events: none; animation: dmgFloat 1s forwards; z-index: 10; }
+@keyframes dmgFloat {
+0% { opacity: 1; transform: translateY(0) scale(0.6); }
+30% { transform: translateY(-16px) scale(1.2); }
+100% { opacity: 0; transform: translateY(-44px) scale(1); }
+}
+#flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 50; }
+#flash.on { animation: flash 0.2s; }
+@keyframes flash { 0% { opacity: 0; } 50% { opacity: 0.6; } 100% { opacity: 0; } }
+.level-up {
+position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
+font-size: 32px; color: #ffff00; text-shadow: 3px 3px 0 #884400, 0 0 16px #ffff00;
+letter-spacing: 4px; z-index: 20; animation: lvUp 1.8s forwards; pointer-events: none; white-space: nowrap;
+}
+@keyframes lvUp {
+0% { opacity: 0; transform: translate(-50%, -30%) scale(0.5); }
+20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+100% { opacity: 0; transform: translate(-50%, -80%) scale(1); }
+}
+@media (max-height: 640px) {
+#status { line-height: 1.5; }
+#monster { font-size: 32px; }
+.key { min-height: 40px; font-size: 14px; }
+}
+</style>
+</head>
+<body>
+<div id="game">
+
+  <div class="overlay" id="titleScreen">
+    <div class="hero">🗝️</div>
+    <h1>加法定理<br>クエスト</h1>
+    <p class="sub">～数学Ⅱの章～</p>
+    <p style="margin-top:24px;">こうしきの かたちを みきわめ<br>モンスターを うちたおせ！</p>
+    <button class="start-btn" id="startBtn">▶ はじめる</button>
+    <button class="how-btn" id="howBtn">？ あそびかた</button>
+    <p class="sub" style="margin-top:20px;font-size:10px;">5つの 章（どこからでも）→ さいごの 章</p>
+  </div>
+
+  <div class="overlay hidden" id="tutDoneScreen">
+    <div class="hero">🎯</div>
+    <h1>れんしゅう<br>クリア！</h1>
+    <div class="points">
+      <div>・<b>sin</b> は「sin cos ± cos sin」<b>符号 そのまま</b></div>
+      <div>・<b>cos</b> は「cos cos ∓ sin sin」<b>符号 はんたい</b></div>
+      <div>・角は <b>30°・45°・60°</b> などに わける</div>
+      <div>・答えは <b>大きさと 符号</b>で 見当を つける</div>
+    </div>
+    <button class="start-btn" id="goBtn">▶ しょうえらびへ</button>
+  </div>
+
+  <div class="overlay hidden" id="mapScreen">
+    <h1 style="font-size:20px;margin-bottom:6px;">しょうを えらべ</h1>
+    <p class="sub" id="mapLV" style="margin-bottom:10px;">ゆうしゃ LV 1</p>
+    <div id="chapterList"></div>
+  </div>
+
+  <div class="overlay hidden" id="clearScreen">
+    <div class="hero" id="clearHero">🐚</div>
+    <h1 id="clearTitle">たおした！</h1>
+    <p id="clearText" style="white-space:pre-line;"></p>
+    <button class="start-btn" id="clearBtn">▶ しょうえらびへ</button>
+    <button class="how-btn hidden" id="resetBtn1">▶ 1周目の LV 1 に もどって あそぶ</button>
+  </div>
+
+  <div class="overlay hidden" id="resetScreen">
+    <div class="hero">🔄</div>
+    <h1 style="font-size:20px;">1周目の LV 1 に もどる？</h1>
+    <p>★ と LV は 1周目から に なります。</p>
+    <button class="start-btn" id="resetYes">もどる</button>
+    <button class="how-btn" id="resetNo">やめる</button>
+  </div>
+
+  <div class="overlay hidden" id="gameOverScreen">
+    <div class="hero">💀</div>
+    <h1 style="color:#ff4444;text-shadow:3px 3px 0 #440000;">ぜんめつ…</h1>
+    <p>ゆうしゃは たおれてしまった…</p>
+    <p class="sub">この 章の さいしょから</p>
+    <button class="start-btn" id="retryBtn">▶ やりなおす</button>
+    <button class="how-btn" id="toMapBtn">しょうえらびへ</button>
+  </div>
+
+  <div class="rpg-window" id="status">
+    <div class="row"><span class="label">ゆうしゃ</span><span class="value" id="levelDisplay">LV 1</span></div>
+    <div class="row"><span class="label">ライフ</span><span class="value hearts" id="livesDisplay">♥♥♥</span></div>
+    <div class="row"><span class="label">こうげき</span><span class="value" id="attackDisplay">2</span></div>
+    <div class="row"><span class="label">てき</span><span class="value" id="enemyHpDisplay">HP 1</span></div>
+    <div class="row wide"><span class="label">しょう</span><span class="value" id="progressDisplay">&nbsp;</span></div>
+  </div>
+
+  <div class="rpg-window" id="battle">
+    <button id="skipTut" class="hidden">とばす ▶▶</button>
+    <div id="enemy"><div id="monster">〰️</div><div id="monsterName">ナミガタ</div></div>
+    <div id="problem">
+      <div class="label" id="problemLabel">&nbsp;</div>
+      <div class="expr" id="problemExpr">&nbsp;</div>
+    </div>
+  </div>
+
+  <div id="planeWrap"><canvas id="plane" width="300" height="190"></canvas>
+    <div id="card" class="hidden"></div>
+  </div>
+
+  <div class="rpg-window" id="message"><span id="msgText">&nbsp;</span></div>
+
+  <div id="controls">
+    <button class="key opt hidden" data-i="0"></button>
+    <button class="key opt hidden" data-i="1"></button>
+    <button class="key opt hidden" data-i="2"></button>
+    <button class="key opt hidden" data-i="3"></button>
+    <button class="key submit full" id="decideBtn">けってい</button>
+    <button class="key full hidden" id="nextBtn">▼ つぎへ</button>
+  </div>
+
+  <div id="btnHint" class="hidden">👇</div>
+  <div id="flash"></div>
+</div>
+
+<!-- ========== しくみ（問題づくり・正解の判定）。画面には触らない ========== -->
+<script id="core">
+(function (G) {
+'use strict';
+// 角は π/12（15°）を 1 と した 整数 u で もつ。分数は {分子|分母} と 書く（画面で 分数に する）
+const MINUS = '−';
+function gcd(a, b) { a = Math.abs(a); b = Math.abs(b); while (b) { [a, b] = [b, a % b]; } return a; }
+const mod = (a, n) => ((a % n) + n) % n;
+function mulberry32(seed) {
+  let t = seed >>> 0;
+  return function () {
+    t = (t + 0x6D2B79F5) >>> 0;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function ri(rng, lo, hi) { return lo + Math.floor(rng() * (hi - lo + 1)); }
+function pick(rng, a) { return a[Math.floor(rng() * a.length)]; }
+function shuffle(rng, arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+function angStr12(u) {   // u·π/12 を 約分して 文字に
+  if (u === 0) return '0';
+  const g = gcd(u, 12), n = u / g, d = 12 / g, an = Math.abs(n);
+  return (n < 0 ? MINUS : '') + (an === 1 ? '' : an) + 'π' + (d === 1 ? '' : '/' + d);
+}
+const degStr = u => (u * 15) + '°';
+const angText = (u, unit) => (unit === 'deg' ? degStr(u) : angStr12(u));
+const pm = s => (s > 0 ? '＋' : MINUS);
+const NB = '\u00a0';   // 角の 数の 前は 改行しない 空白（sin 50° が 行で 切れない）
+const sgnStr = s => (s > 0 ? '＋' : MINUS);
+const FNS = ['sin', 'cos', 'tan'];
+const other = fn => (fn === 'sin' ? 'cos' : 'sin');
+
+// ---------- 公式の かたち ----------
+// a・b は 文字（'α'）か、角（NB ＋ '50°'：前に 空白）
+function expand(fn, op, a = 'α', b = 'β') {
+  if (fn === 'sin') return 'sin' + a + ' cos' + b + ' ' + pm(op) + ' cos' + a + ' sin' + b;
+  if (fn === 'cos') return 'cos' + a + ' cos' + b + ' ' + pm(-op) + ' sin' + a + ' sin' + b;
+  return '{tan' + a + ' ' + pm(op) + ' tan' + b + '|1 ' + pm(-op) + ' tan' + a + ' tan' + b + '}';
+}
+const lhs = (fn, op) => fn + '(α ' + pm(op) + ' β)';
+const twice = h => (h === '2α' ? '4α' : '2α');   // 2倍の 角
+// 2倍角：cs ＝ cos² − sin²、c ＝ 2cos² − 1、s ＝ 1 − 2sin²、sc ＝ 2sin cos、t ＝ tan
+function dbl(k, a = 'α') {
+  return {
+    sc: '2sin' + a + ' cos' + a, cs: 'cos²' + a + ' ' + MINUS + ' sin²' + a, c: '2cos²' + a + ' ' + MINUS + ' 1',
+    s: '1 ' + MINUS + ' 2sin²' + a, t: '{2tan' + a + '|1 ' + MINUS + ' tan²' + a + '}',
+  }[k];
+}
+const DBL_OF = { sc: 'sin', cs: 'cos', c: 'cos', s: 'cos', t: 'tan' };
+// 象限ごとの 符号：[cos（x座標）, sin（y座標）]
+const QS = { 1: [1, 1], 2: [-1, 1], 3: [-1, -1], 4: [1, -1] };
+const sgn = (fn, qd) => (fn === 'cos' ? QS[qd][0] : fn === 'sin' ? QS[qd][1] : QS[qd][0] * QS[qd][1]);
+const QRANGE = { 1: '0 ＜ α ＜ π/2', 2: 'π/2 ＜ α ＜ π', 3: 'π ＜ α ＜ 3π/2', 4: '3π/2 ＜ α ＜ 2π' };
+const FR = ['1/3', '2/3', '3/5', '4/5', '1/4', '3/4', '5/13', '12/13'];
+// 値を 知っている 角（30°・45° の 倍数）と、加法定理で わける 角（15° の 奇数倍）
+const KNOWN = []; for (let u = 2; u <= 22; u++) if (u % 2 === 0 || u % 3 === 0) KNOWN.push(u);
+const ODD15 = [1, 5, 7, 11, 13, 17, 19, 23];
+const SMALL = [2, 3, 4];   // 30°・45°・60°
+function splitsOf(u) {     // u ＝ a ± b（a は 知っている 角、b は 30°・45°・60°）
+  const plus = [], minus = [];
+  for (const b of SMALL) { if (KNOWN.includes(u - b)) plus.push([u - b, b, 1]); if (KNOWN.includes(u + b)) minus.push([u + b, b, -1]); }
+  return plus.length ? plus : minus;   // たせる ときは たす。30° → 45° → 60° の 順に さがす（問題集の 分け方）
+}
+// 大きい 角を 先に 書く（ひく ときも 大きい ほうから）
+const splitVal = ([a, b, op]) => Math.max(a, b) + op * Math.min(a, b);
+const splitText = ([a, b, op], unit) => angText(Math.max(a, b), unit) + ' ' + pm(op) + ' ' + angText(Math.min(a, b), unit);
+// 15° の 奇数倍の 値：|sin|・|cos| は (√6 ± √2)/4、|tan| は 2 ± √3
+const EST = { big: { sc: '{√6 ＋ √2|4}', t: '2 ＋ √3' }, small: { sc: '{√6 − √2|4}', t: '2 − √3' } };
+function estText(fn, s, big) {
+  const k = fn === 'tan' ? 't' : 'sc';
+  if (k === 't' && s < 0) return big ? '−2 − √3' : '−2 ＋ √3';
+  return (s < 0 ? MINUS : '') + EST[big ? 'big' : 'small'][k];
+}
+function estTrue(fn, u) {   // 本当の 符号と 大きさ
+  const t = u * Math.PI / 12, v = fn === 'sin' ? Math.sin(t) : fn === 'cos' ? Math.cos(t) : Math.tan(t);
+  return { s: Math.sign(v), big: Math.abs(v) > (fn === 'tan' ? 1 : Math.SQRT1_2) };
+}
+const nearY = u => mod(u, 12) === 5 || mod(u, 12) === 7;   // 動径が y軸に 近い（75°・105° など）
+
+// ---------- 問題を つくる ----------
+// form { fn, op }　式 → 展開（4択）｜ formRev { fn, op, deg } 展開 → 1つの 式（逆向き。ボスは 角の 数で）
+// split { fn, u, unit } 角の 分け方 ｜ pair { qa, qb, fa, fb } 2つの 角の 符号 ｜ dsign { q } sin2α の 符号
+// dform { fn, k } 2倍角の 形 ｜ dpick { know } cos2α の どの 形を 使うか ｜ drev { k, x } 2倍角に まとめる（逆向き）
+// est { fn, u, unit } 大きさと 符号で 値を えらぶ
+function genPrm(lv, kind, rng, opt) {
+  const boss = !!(opt && opt.boss);
+  if (lv === 1) {
+    if (kind === 'rev') {
+      const fn = pick(rng, ['sin', 'cos']), op = rng() < 0.5 ? 1 : -1;
+      if (!boss) return { mode: 'formRev', fn, op, deg: null };
+      // 角の 数：A ± B が 30°・45°・60°・90°、A・B は 15° の 倍数で ない（そのままでは 値が わからない）
+      const ok = []; for (let A = 5; A < 90; A += 5) for (let B = 5; B < A; B += 5) {
+        if (A % 15 === 0 || B % 15 === 0) continue;
+        if ([30, 60, 90].includes(A + op * B)) ok.push([A, B]);   // 45° は sin と cos が 同じ 値に なるので 使わない
+      }
+      return { mode: 'formRev', fn, op, deg: pick(rng, ok) };
+    }
+    return { mode: 'form', fn: pick(rng, FNS), op: rng() < 0.5 ? 1 : -1 };
+  }
+  if (lv === 2) return { mode: 'split', fn: pick(rng, FNS), u: pick(rng, ODD15), unit: rng() < 0.5 ? 'deg' : 'rad' };
+  if (lv === 3) {
+    const val = () => ri(rng, 0, FR.length - 1);
+    if (rng() < 0.6) return { mode: 'pair', qa: ri(rng, 1, 4), qb: ri(rng, 1, 4), fa: pick(rng, ['sin', 'cos']), fb: pick(rng, ['sin', 'cos']), va: val(), vb: val(), tgt: pick(rng, ['sin', 'cos']), op: rng() < 0.5 ? 1 : -1 };
+    return { mode: 'dsign', q: ri(rng, 1, 4), know: pick(rng, ['sin', 'cos']), va: val() };
+  }
+  if (lv === 4) {
+    if (kind === 'rev') return { mode: 'drev', k: pick(rng, ['sc', 'cs', 'c', 's', 't']), x: boss ? pick(rng, [15, 75, 67.5]) : null };   // 22.5° は 2倍が 45° で sin と cos が 同じ 値に なるので 使わない
+    // h：もとの 角（α → 2α、2α → 4α）
+    if (rng() < 0.6) { const fn = pick(rng, FNS); return { mode: 'dform', fn, k: fn === 'cos' ? pick(rng, ['cs', 'c', 's']) : fn === 'sin' ? 'sc' : 't', h: pick(rng, ['α', '2α']) }; }
+    return { mode: 'dpick', know: pick(rng, ['sin', 'cos']), va: ri(rng, 0, FR.length - 1) };
+  }
+  return { mode: 'est', fn: pick(rng, FNS), u: pick(rng, ODD15), unit: rng() < 0.5 ? 'deg' : 'rad' };
+}
+
+function makeOptions(p, rng) {
+  const q = p.prm;
+  let c = [];   // [文字, 間違いの 種類]
+  if (q.mode === 'form') {
+    const { fn, op } = q;
+    c.push([expand(fn, op), []]);
+    if (fn === 'tan') c.push(['{tanα ' + pm(op) + ' tanβ|1 ' + pm(op) + ' tanα tanβ}', ['sign']], ['{1 ' + pm(-op) + ' tanα tanβ|tanα ' + pm(op) + ' tanβ}', ['frac']], ['tanα ' + pm(op) + ' tanβ', ['naive']]);
+    else c.push([expand(fn, -op), ['sign']], [expand(other(fn), op), ['swap']], [fn + 'α ' + pm(op) + ' ' + fn + 'β', ['naive']]);
+    c = shuffle(rng, c);
+  }
+  if (q.mode === 'formRev') {
+    const arg = s => (q.deg ? NB + (q.deg[0] + s * q.deg[1]) + '°' : '(α ' + pm(s) + ' β)');
+    for (const f of ['sin', 'cos']) for (const s of [1, -1]) c.push([f + arg(s), f !== q.fn ? ['swap'] : s !== q.op ? ['sign'] : []]);
+  }
+  if (q.mode === 'split') {
+    const sp = p.split, [a, b, op] = sp;
+    c.push([splitText(sp, q.unit), []], [splitText([a, b, -op], q.unit), ['sign']]);
+    // 値を 知らない 角（15°）が はいる 分け方
+    c.push([splitText(KNOWN.includes(q.u - 1) ? [q.u - 1, 1, 1] : [q.u + 1, 1, -1], q.unit), ['unknown']]);
+    // どちらも 知っている 角だが、たしても（ひいても）もとの 角に ならない
+    const wr = [];
+    for (const b2 of SMALL) if (b2 !== b) wr.push([a, b2, op]);
+    for (const a2 of KNOWN) if (Math.abs(a2 - a) <= 2 && a2 !== a) wr.push([a2, b, op]);
+    const w = shuffle(rng, wr).find(x => splitVal(x) > 0 && splitVal(x) !== q.u && x[0] !== x[1] && splitText(x, 'deg') !== splitText([a, b, -op], 'deg'));
+    c.push([splitText(w, q.unit), ['value']]);
+    c = shuffle(rng, c);
+  }
+  if (q.mode === 'pair' || q.mode === 'dsign') {
+    const [f1, f2, q1, q2] = q.mode === 'pair' ? [q.fa, q.fb, q.qa, q.qb] : ['sin', 'cos', q.q, q.q];
+    const right = [sgn(f1, q1), sgn(f2, q2)], sw = [sgn(other(f1), q1), sgn(other(f2), q2)];
+    for (const s1 of [1, -1]) for (const s2 of [1, -1]) {
+      const text = q.mode === 'pair'
+        ? f1 + 'α ' + (s1 > 0 ? '＞' : '＜') + ' 0，' + f2 + 'β ' + (s2 > 0 ? '＞' : '＜') + ' 0'
+        : '2 ×（' + sgnStr(s1) + '）×（' + sgnStr(s2) + '）→ ' + sgnStr(s1 * s2);
+      const ok = s1 === right[0] && s2 === right[1];
+      c.push([text, ok ? [] : (s1 === sw[0] && s2 === sw[1]) ? ['swap'] : ['sign']]);
+    }
+  }
+  if (q.mode === 'dform') {
+    const h = q.h;
+    c.push([dbl(q.k, h), []]);
+    if (q.fn === 'sin') c.push(['sin' + h + ' cos' + h, ['coef']], ['2sin' + h, ['naive']], [dbl('cs', h), ['swap']]);
+    if (q.fn === 'cos') c.push([{ cs: 'sin²' + h + ' ' + MINUS + ' cos²' + h, c: '1 ' + MINUS + ' 2cos²' + h, s: '2sin²' + h + ' ' + MINUS + ' 1' }[q.k], ['sign']], ['2cos' + h, ['naive']], [dbl('sc', h), ['swap']]);
+    if (q.fn === 'tan') c.push(['{2tan' + h + '|1 ＋ tan²' + h + '}', ['sign']], ['2tan' + h, ['naive']], ['{1 ' + MINUS + ' tan²' + h + '|2tan' + h + '}', ['frac']]);
+    c = shuffle(rng, c);
+  }
+  if (q.mode === 'dpick') {
+    const right = q.know === 'sin' ? 's' : 'c';
+    for (const k of ['cs', 'c', 's']) c.push([dbl(k), k === right ? [] : ['pick']]);
+    c.push([dbl('sc'), ['swap']]);
+  }
+  if (q.mode === 'drev') {
+    const a = q.x === null ? 'α' : NB + q.x + '°', a2 = q.x === null ? '2α' : NB + 2 * q.x + '°';
+    for (const f of FNS) c.push([f + a2, f === DBL_OF[q.k] ? [] : ['swap']]);
+    if (q.k === 'sc') c.push(['2sin' + a, ['naive']]);
+    else if (q.k === 't') c.push(['2tan' + a, ['naive']]);
+    else c.push(['1', ['pyth']]);
+  }
+  if (q.mode === 'est') {
+    const T = estTrue(q.fn, q.u);
+    for (const [s, big] of [[1, true], [1, false], [-1, false], [-1, true]]) {   // 大きい 順
+      const types = []; if (s !== T.s) types.push('sign'); if (big !== T.big) types.push('size');
+      c.push([estText(q.fn, s, big), types]);
+    }
+  }
+  return c.map(([text, types]) => ({ key: text, text, types, correct: types.length === 0 }));
+}
+
+function build(lv, kind, prm, rng, opt = {}) {
+  const p = { lv, kind, prm, mode: prm.mode };
+  const q = prm;
+  p.fig = ['split', 'pair', 'dsign', 'est'].includes(q.mode) ? 'circle' : 'card';
+  if (q.mode === 'split') p.split = splitsOf(q.u)[0];
+  p.options = makeOptions(p, rng);
+  const A = q.u !== undefined ? angText(q.u, q.unit) : '';
+  const fA = q.fn ? q.fn + ' ' + A : '';
+  const degA = q.deg ? NB + q.deg[0] + '°' : 'α', degB = q.deg ? NB + q.deg[1] + '°' : 'β';
+  const xd = q.x === null || q.x === undefined ? 'α' : NB + q.x + '°';
+  const T = {
+    form: ['▼ 加法定理の かたちは？', q.fn ? lhs(q.fn, q.op) + ' ＝ ？' : ''],
+    formRev: ['▼ どの 式に まとまる？', q.fn ? expand(q.fn, q.op, degA, degB) + ' ＝ ？' : ''],
+    split: ['▼ 角を どう わける？', fA + ' を 求める。' + A + ' ＝ ？'],
+    pair: ['▼ 符号は？', 'α は 第' + q.qa + '象限、β は 第' + q.qb + '象限。' + q.fa + 'α と ' + q.fb + 'β の 符号は？'],
+    dsign: ['▼ 符号は？', 'α が 第' + q.q + '象限の とき、sin2α ＝ 2sinα cosα の 符号は？'],
+    dform: ['▼ 2倍角の かたちは？', q.fn + twice(q.h) + ' ＝ ？'],
+    dpick: ['▼ どの 形を つかう？', q.know + 'α の 値 だけ わかっている。cos2α を 求める 形は？'],
+    drev: ['▼ どの 式に まとまる？', q.k ? dbl(q.k, xd) + ' ＝ ？' : ''],
+    est: ['▼ 大きさと 符号で えらべ', fA + ' の 値は？'],
+  }[q.mode];
+  [p.label, p.display] = T;
+  // 図（カード）に 大きく 出す 式と、答えの 式
+  if (p.fig === 'card') p.card = cardOf(p);
+  if (opt.boss) {
+    const sv = (fn, qd, i) => (sgn(fn, qd) < 0 ? MINUS : '') + FR[i];   // 象限に あう 符号を つけた 値
+    const E = {
+      form: ['加法定理に より、' + (q.fn ? lhs(q.fn, q.op) : '') + ' を 展開 した 式は 次の どれか。'],
+      formRev: ['次の 式を 1つの 三角関数で 表せ。　' + (q.fn ? expand(q.fn, q.op, degA, degB) : '')],
+      split: ['加法定理を 用いて ' + fA + ' の 値を 求める。' + A + ' の 分け方 として 正しい ものは どれか。'],
+      pair: q.mode === 'pair' ? ['α は 第' + q.qa + '象限、β は 第' + q.qb + '象限の 角 で、' + other(q.fa) + 'α ＝ ' + sv(other(q.fa), q.qa, q.va) + '、' + other(q.fb) + 'β ＝ ' +
+              sv(other(q.fb), q.qb, q.vb) + ' で ある。' + lhs(q.tgt, q.op) + ' を 求める とき、' + q.fa + 'α と ' + q.fb + 'β の 符号の 組は どれか。'] : [''],
+      dsign: q.mode === 'dsign' ? [QRANGE[q.q] + ' で ' + q.know + 'α ＝ ' + sv(q.know, q.q, q.va) + ' の とき、sin2α ＝ 2sinα cosα の 符号を 考える。正しい ものは どれか。'] : [''],
+      dform: ['2倍角の 公式を 用いて ' + (q.fn || '') + twice(q.h) + ' を 表した 式 として 正しい ものは どれか。'],
+      dpick: [(q.know || '') + 'α ＝ ' + FR[q.va || 0] + ' の とき、cos2α の 値を 求める。用いる 式 として 最も 適した ものは どれか。'],
+      drev: ['次の 式を 1つの 三角関数で 表せ。　' + (q.k ? dbl(q.k, xd) : '')],
+      est: [fA + ' の 値を 求めよ。'],
+    }[q.mode];
+    p.shortText = T[1];
+    p.label = '▼ 問題集の ことばで';
+    p.display = E[Math.floor(rng() * E.length)];
+    p.exam = true;
+  }
+  p.reason = reasonLines(p);
+  if (p.exam) p.reason.push('この 問題は 第' + lv + '章の「' + p.shortText + '」と おなじ');
+  return p;
+}
+function cardOf(p) {
+  const q = p.prm, right = p.options.find(o => o.correct).text;
+  const xd = q.x === null || q.x === undefined ? 'α' : NB + q.x + '°';
+  if (q.mode === 'form') return { q: lhs(q.fn, q.op) + ' ＝ ？', a: lhs(q.fn, q.op) + ' ＝ ' + right };
+  if (q.mode === 'formRev') { const L = expand(q.fn, q.op, q.deg ? NB + q.deg[0] + '°' : 'α', q.deg ? NB + q.deg[1] + '°' : 'β'); return { q: L + ' ＝ ？', a: L + ' ＝ ' + right }; }
+  if (q.mode === 'dform') return { q: q.fn + twice(q.h) + ' ＝ ？', a: q.fn + twice(q.h) + ' ＝ ' + right };
+  if (q.mode === 'dpick') return { q: 'わかっている：' + q.know + 'α\ncos2α ＝ ？', a: 'cos2α ＝ ' + right };
+  return { q: dbl(q.k, xd) + ' ＝ ？', a: dbl(q.k, xd) + ' ＝ ' + right };
+}
+
+// ---------- 判定 ----------
+function judge(p, ans) { return p.options[ans.opt].correct; }
+function classify(p, ans) { return { types: p.options[ans.opt].types.slice() }; }
+const TYPE_TEXT = {
+  sign: '＋ と − が はんたい', swap: 'sin と cos（の かたち）を とりちがえた',
+  naive: 'そのまま わけたり 2倍 したり している（そうは ならない）', frac: '分子と 分母が 逆',
+  coef: '2 を わすれた', unknown: '値を 知らない 角（15° など）が はいっている',
+  value: 'たしても（ひいても）もとの 角に ならない', pick: 'わかっていない ほうの 値が いる 形を えらんだ',
+  pyth: 'sin² ＋ cos² ＝ 1 と とりちがえた', size: '大きさ（1 に 近いか 0 に 近いか）が ちがう', scatter: 'えらびかたが ばらばら',
+};
+const MASTER_TEXT = { sign: '＋ と −', swap: 'sin と cos', naive: 'そのまま わけない', frac: '分子と 分母', coef: '2 を つける', unknown: '知っている 角に わける', value: 'もとの 角に もどる 分け方', pick: 'わかっている 方の 形', pyth: '2倍角と sin² ＋ cos²', size: '大きさの 見当' };
+function describe(p, cls) { return cls.types.map(t => TYPE_TEXT[t]).join('、'); }
+function masterText(t) { return MASTER_TEXT[t]; }
+
+// ---------- 理由 ----------
+const SIGN_LINE = qd => '第' + qd + '象限：cos（x座標）は ' + sgnStr(QS[qd][0]) + '、sin（y座標）は ' + sgnStr(QS[qd][1]);
+function reasonLines(p) {
+  const q = p.prm, L = [], right = p.options.find(o => o.correct).text;
+  if (q.mode === 'form' || q.mode === 'formRev') {
+    const fn = q.fn;
+    if (fn === 'sin') L.push('sin は「sin cos ' + pm(q.op) + ' cos sin」、符号は そのまま');
+    if (fn === 'cos') L.push('cos は「cos cos ' + pm(-q.op) + ' sin sin」、符号が はんたいに なる');
+    if (fn === 'tan') L.push('tan は 分子が「tan ' + pm(q.op) + ' tan」、分母が「1 ' + pm(-q.op) + ' tan tan」（分母は 符号が はんたい）');
+    if (q.mode === 'formRev') L.push('「sin cos ± cos sin」は sin、「cos cos ∓ sin sin」は cos の かたち');
+    L.push('→ ' + p.card.a);
+  }
+  if (q.mode === 'split') {
+    L.push('加法定理で つかうのは 値を 知っている 角（30°・45°・60°・90° など）');
+    L.push('→ ' + angText(q.u, q.unit) + ' ＝ ' + right);
+  }
+  if (q.mode === 'pair') { L.push('cos は 単位円の x座標、sin は y座標'); L.push(SIGN_LINE(q.qa) + '（α）'); if (q.qb !== q.qa) L.push(SIGN_LINE(q.qb) + '（β）'); L.push('→ ' + right); }
+  if (q.mode === 'dsign') { L.push(SIGN_LINE(q.q)); L.push('→ sin2α ＝ ' + right); }
+  if (q.mode === 'dform' || q.mode === 'dpick' || q.mode === 'drev') {
+    const fn = q.mode === 'dform' ? q.fn : q.mode === 'dpick' ? 'cos' : DBL_OF[q.k];
+    if (fn === 'sin') L.push('sin2α ＝ sin(α ＋ α) ＝ sinα cosα ＋ cosα sinα ＝ 2sinα cosα');
+    if (fn === 'cos') L.push('cos2α ＝ cos²α − sin²α ＝ 2cos²α − 1 ＝ 1 − 2sin²α（sin²α ＋ cos²α ＝ 1 で 書きかえ）');
+    if (fn === 'tan') L.push('tan2α ＝ tan(α ＋ α) ＝ {2tanα|1 − tan²α}');
+    if (q.mode === 'dpick') L.push(q.know + 'α だけで 書ける 形を つかう');
+    if (q.mode === 'dform' && q.h === '2α') L.push('α を 2α に かえても おなじ（4α ＝ 2 × 2α）');
+    L.push('→ ' + p.card.a);
+  }
+  if (q.mode === 'est') {
+    const T = estTrue(q.fn, q.u), A = angText(q.u, q.unit);
+    L.push(q.fn + ' は 単位円の ' + { sin: 'y座標', cos: 'x座標', tan: '傾き（y ÷ x）' }[q.fn] + '。' + A + ' の 動径は ' + (nearY(q.u) ? 'y軸' : 'x軸') + ' に 近い');
+    L.push('→ 符号は ' + sgnStr(T.s) + '、' + (T.big ? (q.fn === 'tan' ? '1 より 大きい' : '1 に 近い') : '0 に 近い'));
+    L.push(q.fn === 'tan' ? '2 ＋ √3 ≒ 3.7、2 − √3 ≒ 0.27' : '√6 ≒ 2.45、√2 ≒ 1.41 → {√6 ＋ √2|4} ≒ 0.97、{√6 − √2|4} ≒ 0.26');
+    L.push('→ ' + q.fn + ' ' + A + ' ＝ ' + right);
+  }
+  return L;
+}
+
+// ---------- 苦手に 合わせた 問題 ----------
+// 同じ 形の 問題で たしかめる（関数の ある 問題は 同じ 関数）。sin と cos の 取り違えは sin か cos で
+function likeOK(q, m, types) {
+  if (q.mode !== m.mode) return false;
+  if (m.fn && q.fn !== m.fn && !(types.includes('swap') && q.fn !== 'tan')) return false;
+  return true;
+}
+// 問題の 中身が かぶるか（直前の 1問と くらべる）
+function clash(a, b) {
+  if (a.mode !== b.mode) return false;
+  const key = { form: ['fn', 'op'], formRev: ['fn', 'op'], split: ['u'], pair: ['qa', 'qb', 'fa', 'fb'], dsign: ['q'], dform: ['fn', 'k', 'h'], dpick: ['know'], drev: ['k'], est: ['fn', 'u'] }[a.mode];
+  return key.every(k => a[k] === b[k]);
+}
+// ---------- 章・ダメージ・HP（グラフクエストと おなじ） ----------
+const NORMAL = 2;
+const CHAPTERS = [
+  { ch: 1, lv: 1, title: '第1章 かたち', enemy: { name: 'テンカイ', sprite: '🧩' }, boss: { name: 'カホウノヌシ', sprite: '🗝️' } },
+  { ch: 2, lv: 2, title: '第2章 わける', enemy: { name: 'ワケミ', sprite: '✂️' }, boss: { name: 'ブンカツオウ', sprite: '🪓' } },
+  { ch: 3, lv: 3, title: '第3章 ふごう', enemy: { name: 'ショウゲン', sprite: '🧭' }, boss: { name: 'ショウゲンオウ', sprite: '🌀' } },
+  { ch: 4, lv: 4, title: '第4章 倍角', enemy: { name: 'フタゴ', sprite: '👯' }, boss: { name: 'バイカクノヌシ', sprite: '🐉' } },
+  { ch: 5, lv: 5, title: '第5章 みつもり', enemy: { name: 'メキキ', sprite: '👀' }, boss: { name: 'ミツモリオウ', sprite: '🔮' } },
+  { ch: 6, final: true, title: 'さいごの 章', boss: { name: 'テイリノオウ', sprite: '🏯' } },
+];
+const HAS_REV = [1, 4];   // 逆向き（展開 → 1つの 式）が ある 章
+function chapterPlan(ch, rng) {
+  const C = CHAPTERS[ch - 1];
+  if (C.final) {
+    const lvs = shuffle(rng, [1, 2, 3, 4, 5]);
+    const rev = pick(rng, lvs.map((lv, i) => i).filter(i => HAS_REV.includes(lvs[i])));
+    return { zako: [], boss: lvs.map((lv, i) => ({ lv, kind: i === rev ? 'rev' : 'fwd', boss: true })) };
+  }
+  const rev = HAS_REV.includes(C.lv) ? ri(rng, 0, NORMAL - 1) : -1;
+  // 中ボス：逆向きの ある 章は 半分 逆向き（角の 数で「1つの 三角関数で 表せ」）
+  const bk = HAS_REV.includes(C.lv) && rng() < 0.5 ? 'rev' : 'fwd';
+  return { zako: [...Array(NORMAL).keys()].map(i => ({ lv: C.lv, kind: i === rev ? 'rev' : 'fwd' })), boss: [{ lv: C.lv, kind: bk, boss: true }] };
+}
+const zakoHP = L => 1 + Math.floor(L / 2);
+const midHP = L => 7 + Math.floor(L / 2);
+const finalHP = L => 34 + L;
+const CRIT = 1 / 8;
+const comboBonus = n => Math.min(Math.max(n - 1, 0), 3);
+function damage(p, L, ev, rng, combo = 0) {
+  let d = (p.kind === 'rev' || p.exam ? 3 : 2) + (L - 1) + (p.target && p.target.lv ? 1 : 0) + comboBonus(combo);
+  const crit = (ev && ev.mastered && ev.mastered.length > 0) || rng() < CRIT;
+  return { d: crit ? d * 2 : d, crit };
+}
+function newContext() { return { recent: [], last: null, weak: {}, log: [] }; }
+function makeProblem(slot, ctx, rng) {
+  const w = ctx.weak[slot.lv];
+  const notLast = prm => !(ctx.last && clash(prm, ctx.last));
+  const fresh = prm => notLast(prm) && !ctx.recent.includes(slot.kind + JSON.stringify(prm));
+  const gen = () => genPrm(slot.lv, slot.kind, rng, { boss: !!slot.boss });
+  let prm = null, target = false;
+  if (w) for (let i = 0; i < 400 && !prm; i++) { const c = gen(); if (likeOK(c, w.like, w.types) && notLast(c)) { prm = c; target = true; } }
+  for (let i = 0; i < 400 && !prm; i++) { const c = gen(); if (fresh(c)) prm = c; }
+  for (let i = 0; i < 400 && !prm; i++) { const c = gen(); if (notLast(c)) prm = c; }
+  if (!prm) prm = gen();
+  const p = build(slot.lv, slot.kind, prm, rng, { boss: !!slot.boss });
+  p.target = { lv: target };
+  ctx.recent.push(slot.kind + JSON.stringify(prm)); if (ctx.recent.length > 8) ctx.recent.shift();
+  ctx.last = prm;
+  return p;
+}
+function record(ctx, p, ok, cls, ms) {
+  const ev = { lv: p.lv, kind: p.kind, mode: p.mode, ok, types: cls ? cls.types : [], target: p.target, ms, mastered: [] };
+  const w = ctx.weak[p.lv];
+  if (ok) {
+    if (p.target.lv && w && ++w.got >= 2) { ev.mastered.push(...w.types); delete ctx.weak[p.lv]; }
+  } else {
+    const main = cls.types.filter(t => t !== 'scatter');
+    if (main.length) ctx.weak[p.lv] = { types: main, like: p.prm, got: 0 };
+    else if (w && p.target.lv) w.got = 0;
+  }
+  ctx.log.push(ev);
+  return ev;
+}
+
+G.KahouCore = {
+  FNS, QS, KNOWN, ODD15, SMALL, angStr12, degStr, angText, expand, dbl, sgn, splitsOf, estTrue, nearY,
+  genPrm, build, judge, classify, describe, masterText, likeOK, clash,
+  CHAPTERS, NORMAL, HAS_REV, chapterPlan, zakoHP, midHP, finalHP, CRIT, comboBonus, damage, newContext, makeProblem, record, mulberry32,
+};
+})(typeof window !== 'undefined' ? window : this);
+</script>
+
+<!-- ========== 画面 ========== -->
+<script>
+(function () {
+'use strict';
+const C = window.KahouCore;
+const MAX_LIVES = 3;
+const rng = Math.random;
+const $ = id => document.getElementById(id);
+const canvas = $('plane');
+const wrap = $('planeWrap');
+const gameEl = $('game');
+const monsterEl = $('monster');
+const optBtns = [...document.querySelectorAll('#controls .opt')];
+const ASPECT = 0.62;   // 図の 縦横比
+
+const state = {
+  ch: 1, plan: null, stage: 'zako', zi: 0, fi: 0, hp: 1, maxHp: 1, lives: MAX_LIVES,
+  problem: null,
+  opt: -1,
+  phase: 'idle', reveal: false, view: 'ans',
+  tut: null,
+  ctx: C.newContext(), onNext: null,
+};
+const chap = () => C.CHAPTERS[state.ch - 1];
+const atBoss = () => state.stage === 'boss';
+// ゆうしゃ LV ＝ 1 ＋ クリアした 章（さいごの 章を のぞく）の 数
+// ---------- 周回の きろく ----------
+// lap：何周目か（4 で 👑 マスター。★は 3つまで）、cur：この周で クリアした 章、gained：LV が 上がった 回数、stars：章ごとの ★（クリアした 周の 数）
+// LV が 上がるのは「その周で はじめて クリアした 章」だけ。同じ周で 同じ章を くりかえしても 上がらない（均等に あそぶ）
+const MAX_LAP = 3;   // ★3つ（あと1周で そろう、と 思える 数）
+let memProg = null;
+function newProg() { return { lap: 1, cur: {}, gained: 0, stars: {} }; }
+function loadProg() {
+  try {
+    const raw = localStorage.getItem('kahou-progress');
+    if (raw) return JSON.parse(raw);
+  } catch (e) { /* 読めなければ メモリの きろく */ }
+  return memProg || newProg();
+}
+function saveProg(pr) { memProg = pr; try { localStorage.setItem('kahou-progress', JSON.stringify(pr)); } catch (e) { /* 保存できなくても その回は遊べる */ } }
+const heroLV = () => 1 + loadProg().gained;
+const attack = L => L + 1;   // こうげき力 ＝ ザコの 問題の きほんダメージ（2 ＋ LV − 1）
+const isMaster = pr => pr.lap > MAX_LAP;
+const finalOpen = pr => isMaster(pr) || [1, 2, 3, 4, 5].every(k => pr.cur[k]);
+const p = () => state.problem;
+
+// ---------- 文字（TeX 風） ----------
+function esc(t) { return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function mathHTML(text, stacked) {
+  let h = esc(text);
+  h = h.replace(/\{([^{}|]*)\|([^{}]*)\}/g, '<span class="fr"><span class="nu">$1</span><span class="de">$2</span></span>');   // {分子|分母}
+  if (stacked) h = h.replace(/(\d*(?:√\d+)?\d*π?)\/(\d+)/g, (m, nu, de) => (nu ? '<span class="fr"><span class="nu">' + nu + '</span><span class="de">' + de + '</span></span>' : m));
+  return h.replace(/√(\d+)/g, '<span class="rt">√<span class="rad">$1</span></span>').replace(/\n/g, '<br>');
+}
+
+// ---------- 表示 ----------
+function renderStatus() {
+  const c = chap(), n = c.final ? 0 : C.NORMAL;
+  $('levelDisplay').textContent = 'LV ' + heroLV();
+  $('attackDisplay').textContent = String(attack(heroLV()));
+  $('livesDisplay').innerHTML = '♥'.repeat(Math.max(0, state.lives)) + '<span class="empty">' + '♡'.repeat(MAX_LIVES - Math.max(0, state.lives)) + '</span>';
+  $('enemyHpDisplay').textContent = 'HP ' + Math.max(0, state.hp) + '/' + state.maxHp;
+  $('progressDisplay').textContent = (c.final ? 'さいごの 章' : '第' + c.ch + '章') + '　' +
+    (atBoss() ? c.boss.name + ' と たたかい中！' : '■'.repeat(state.zi) + '□'.repeat(n - state.zi) + ' ボスまで あと ' + (n - state.zi) + 'たい');
+  if (state.tut) { $('levelDisplay').textContent = 'れんしゅう'; $('progressDisplay').textContent = 'れんしゅう ' + (state.tut.i + 1) + '/' + TUT.length; }
+}
+function renderEnemy() {
+  const c = chap(), boss = atBoss() && !state.tut, e = boss ? c.boss : c.enemy;
+  monsterEl.textContent = e.sprite; monsterEl.className = boss ? 'boss' : '';
+  $('monsterName').textContent = e.name;
+  // ボス戦の あいだは 枠を 赤（大ボスは 金）、図の 背景も 少し 色を つける
+  gameEl.classList.toggle('boss-mid', boss && !c.final);
+  gameEl.classList.toggle('boss-final', boss && !!c.final);
+}
+// ボスが 出た ときの 合図（画面に 大きく ⚠、赤く 点滅）
+function bossWarn(final) {
+  const el = document.createElement('div');
+  el.className = 'boss-warn' + (final ? ' final' : '');
+  el.textContent = final ? '⚠ BOSS ⚠' : '⚠ 中ボス ⚠';
+  gameEl.appendChild(el); setTimeout(() => el.remove(), 2000);
+}
+function renderProblem() {
+  $('problemLabel').textContent = p().label; $('problemExpr').innerHTML = mathHTML(p().display, true);
+  $('problemExpr').classList.toggle('exam', !!p().exam);
+}
+function show(el, on) { el.classList.toggle('hidden', !on); }
+function renderControls() {
+  const q = p(), next = state.phase === 'next';
+  const opts = q && q.options ? q.options : [];
+  optBtns.forEach((b, i) => {
+    show(b, i < opts.length);
+    if (i >= opts.length) return;
+    const o = opts[i];
+    b.innerHTML = mathHTML(o.text, true);
+    b.dataset.text = o.text;
+    b.classList.toggle('on', state.opt === i && !state.reveal);
+    b.classList.toggle('right', state.reveal && o.correct);
+    b.classList.toggle('wrong', state.reveal && state.opt === i && !o.correct);
+  });
+  show($('decideBtn'), !next); show($('nextBtn'), next);
+  $('decideBtn').disabled = !ready();
+}
+function ready() {
+  const q = p();
+  if (!q || state.phase !== 'play') return false;
+  return state.opt >= 0;
+}
+function setMessage(text) { $('msgText').innerHTML = mathHTML(text, false); $('message').scrollTop = 0; }
+
+// ---------- 図を描く（単位円・式の カード） ----------
+let DPR = 1;
+const card = $('card');
+function resizePlane() {
+  const wMax = wrap.clientWidth - 12, hMax = wrap.clientHeight - 8;
+  const W = Math.max(160, Math.floor(Math.min(wMax, hMax / ASPECT)));
+  DPR = Math.min(window.devicePixelRatio || 1, 3);
+  canvas.style.width = W + 'px'; canvas.style.height = Math.round(W * ASPECT) + 'px';
+  canvas.width = Math.round(W * DPR); canvas.height = Math.round(W * ASPECT * DPR);
+  card.style.width = W + 'px'; card.style.height = Math.round(W * ASPECT) + 'px';
+  draw(); placeBtnHint();
+}
+const YEL = '#ffd84a', BLUE = '#5b8cff', RED = '#ff7a7a';
+// 式の カード：問題の 式を 大きく。答えの ときは 正しい 式を きいろで
+function drawCard(q) {
+  card.innerHTML = '<div class="' + (state.reveal ? 'ca' : 'cq') + '">' + mathHTML(state.reveal ? q.card.a : q.card.q, true) + '</div>';
+}
+function draw() {
+  const q = p(), isCard = !!q && q.fig === 'card';
+  canvas.style.display = isCard ? 'none' : '';
+  card.classList.toggle('hidden', !isCard);
+  if (isCard) { drawCard(q); return; }
+  const ctx = canvas.getContext('2d'), d = DPR, W = canvas.width, H = canvas.height;
+  ctx.fillStyle = gameEl.classList.contains('boss-final') ? '#1a1404' : gameEl.classList.contains('boss-mid') ? '#1c0610' : '#000a18';
+  ctx.fillRect(0, 0, W, H);
+  const R = H * 0.40, cx = W / 2, cy = H / 2;
+  const X = x => cx + x * R, Y = y => cy - y * R;
+  const dir = u => [Math.cos(u * Math.PI / 12), Math.sin(u * Math.PI / 12)];
+  const m = q ? q.prm : null;
+  // 象限の 色（符号の 問題）
+  if (m && (m.mode === 'pair' || m.mode === 'dsign')) {
+    const qs = m.mode === 'pair' ? [[m.qa, 'α'], [m.qb, 'β']] : [[m.q, 'α']];
+    const same = qs.length === 2 && qs[0][0] === qs[1][0];
+    qs.forEach(([k, name], i) => {
+      ctx.fillStyle = same ? 'rgba(170,110,255,0.35)' : i === 0 ? 'rgba(70,120,255,0.35)' : 'rgba(255,90,90,0.30)';
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, -k * Math.PI / 2, -(k - 1) * Math.PI / 2); ctx.closePath(); ctx.fill();
+    });
+  }
+  // 軸と 円
+  ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.3 * d;
+  ctx.beginPath(); ctx.moveTo(cx - R * 1.35, cy); ctx.lineTo(cx + R * 1.35, cy); ctx.moveTo(cx, cy - R * 1.2); ctx.lineTo(cx, cy + R * 1.2); ctx.stroke();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2 * d;
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.font = (10 * d) + 'px sans-serif';
+  ctx.textAlign = 'right'; ctx.textBaseline = 'top'; ctx.fillText('O', cx - 3 * d, cy + 3 * d);
+  ctx.textAlign = 'left'; ctx.fillText('1', X(1) + 3 * d, cy + 3 * d);
+  ctx.textAlign = 'right'; ctx.fillText('−1', X(-1) - 3 * d, cy + 3 * d);
+  ctx.textBaseline = 'bottom'; ctx.textAlign = 'right'; ctx.fillText('1', cx - 3 * d, Y(1) - 2 * d);
+  ctx.font = 'italic ' + (12 * d) + 'px serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillText('x', X(1.3) + 2 * d, cy - 8 * d); ctx.fillText('y', cx + 5 * d, Y(1.12));
+  if (!m) return;
+  function label(s, x, y, col, size) {
+    ctx.font = 'bold ' + ((size || 13) * d) + 'px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 4 * d; ctx.strokeStyle = '#000a18'; ctx.lineJoin = 'round'; ctx.strokeText(s, x, y);
+    ctx.fillStyle = col; ctx.fillText(s, x, y);
+  }
+  function ray(u, col, w, dash) {
+    const [c, s] = dir(u);
+    ctx.strokeStyle = col; ctx.lineWidth = w * d; ctx.setLineDash(dash ? [5 * d, 4 * d] : []);
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(X(c), Y(s)); ctx.stroke(); ctx.setLineDash([]);
+  }
+  function arc(u0, u1, r, col) {   // u0 から u1 まで（反時計まわり ＝ 角が ふえる 向き）
+    ctx.strokeStyle = col; ctx.lineWidth = 2 * d;
+    ctx.beginPath(); ctx.arc(cx, cy, r, -u0 * Math.PI / 12, -u1 * Math.PI / 12, u1 > u0); ctx.stroke();
+  }
+  const ang = u => C.angText(u, m.unit);
+  if (m.mode === 'pair' || m.mode === 'dsign') {
+    const qs = m.mode === 'pair' ? [[m.qa, 'α'], [m.qb, 'β']] : [[m.q, 'α']];
+    const same = qs.length === 2 && qs[0][0] === qs[1][0];
+    qs.forEach(([k, name], i) => {
+      if (same && i === 1) return;
+      // 名前は 円の 内がわ、答えの ときは（x座標, y座標）の 符号を 外がわに
+      const mid = (k - 0.5) * Math.PI / 2, at = r => [cx + Math.cos(mid) * R * r, cy - Math.sin(mid) * R * r];
+      label(same ? 'α・β' : name, ...at(0.3), '#fff', 15);
+      if (state.reveal) { const s = C.QS[k]; label('(' + (s[0] > 0 ? '＋' : '−') + ', ' + (s[1] > 0 ? '＋' : '−') + ')', ...at(0.8), YEL, 13); }
+    });
+  }
+  if (m.mode === 'split') {
+    arc(0, m.u, R * 0.18, 'rgba(255,255,255,0.7)');
+    ray(m.u, '#fff', 2.2);
+    const [c, s] = dir(m.u);
+    label(ang(m.u), X(c * 1.2), Y(s * 1.2), '#fff');
+    if (state.reveal) {   // 大きい 角の 動径と、のこりの 角の 弧
+      const [a, b] = q.split, hi = Math.max(a, b), lo = Math.min(a, b);
+      ray(hi, YEL, 2, true);
+      arc(hi, m.u, R * 0.55, YEL);
+      const [hc, hs] = dir(hi), mid = dir((hi + m.u) / 2);
+      label(ang(hi), X(hc * 1.2), Y(hs * 1.2), YEL);
+      label((m.u > hi ? '＋' : '−') + ang(lo), X(mid[0] * 0.75), Y(mid[1] * 0.75), YEL, 12);
+    }
+  }
+  if (m.mode === 'est') {
+    const [c, s] = dir(m.u), px = X(c), py = Y(s);
+    arc(0, m.u, R * 0.18, 'rgba(255,255,255,0.7)');
+    if (m.fn === 'tan') {   // 傾き：動径を のばした 直線
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.2 * d; ctx.setLineDash([5 * d, 4 * d]);
+      const k = 1.3 / Math.max(Math.abs(c), Math.abs(s));
+      ctx.beginPath(); ctx.moveTo(X(-c * k), Y(-s * k)); ctx.lineTo(X(c * k), Y(s * k)); ctx.stroke(); ctx.setLineDash([]);
+    }
+    ray(m.u, '#fff', 2.2);
+    // 点から x軸へ 点線。答えの ときは sin は その 高さ、cos は x軸の 上の 長さを きいろで
+    if (m.fn !== 'tan') {
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.3 * d; ctx.setLineDash([4 * d, 3 * d]);
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, cy); ctx.stroke(); ctx.setLineDash([]);
+      if (state.reveal) {
+        ctx.strokeStyle = YEL; ctx.lineWidth = 3.5 * d; ctx.beginPath();
+        if (m.fn === 'sin') { ctx.moveTo(px, py); ctx.lineTo(px, cy); } else { ctx.moveTo(cx, cy); ctx.lineTo(px, cy); }
+        ctx.stroke();
+      }
+    }
+    ctx.fillStyle = state.reveal ? YEL : '#fff'; ctx.beginPath(); ctx.arc(px, py, 5 * d, 0, Math.PI * 2); ctx.fill();
+    label(ang(m.u), X(c * 1.22), Y(s * 1.22), '#fff');
+  }
+}
+
+// ---------- 演出 ----------
+function flashScreen() { const f = $('flash'); f.classList.remove('on'); void f.offsetWidth; f.classList.add('on'); }
+function monsterAnim(cls) { monsterEl.classList.remove('hit', 'miss-dmg'); void monsterEl.offsetWidth; monsterEl.classList.add(cls); }
+function showDamage(text, color) {
+  const el = document.createElement('div');
+  el.className = 'dmg-float'; el.textContent = text; el.style.color = color;
+  el.style.textShadow = '2px 2px 0 #000, 0 0 8px ' + color;
+  const r = monsterEl.getBoundingClientRect(), g = gameEl.getBoundingClientRect();
+  el.style.left = (r.left - g.left + r.width / 2 - 16) + 'px'; el.style.top = (r.top - g.top) + 'px';
+  gameEl.appendChild(el); setTimeout(() => el.remove(), 1000);
+}
+function showLevelUp() { const el = document.createElement('div'); el.className = 'level-up'; el.textContent = 'LEVEL UP!'; gameEl.appendChild(el); setTimeout(() => el.remove(), 1800); }
+
+// ---------- 進行 ----------
+function hint() { return 'えらんで けってい'; }
+function resetInput() { state.opt = -1; state.reveal = false; }
+function curSlot() {
+  if (state.stage === 'zako') return state.plan.zako[state.zi];
+  const b = state.plan.boss;
+  return b[Math.min(state.fi, b.length - 1) % b.length];
+}
+function newProblem() {
+  state.problem = C.makeProblem(curSlot(), state.ctx, rng);
+  resetInput(); state.phase = 'play'; state.shownAt = performance.now();
+  renderEnemy(); renderProblem(); renderControls(); renderStatus(); draw();
+}
+function setEnemyHP(v) { state.hp = v; state.maxHp = v; }
+function startChapter(ch) {
+  state.ch = ch;
+  const c = chap(), L = heroLV();
+  state.plan = C.chapterPlan(ch, rng);
+  state.zi = 0; state.fi = 0; state.lives = MAX_LIVES; state.combo = 0;
+  if (c.final) { state.stage = 'boss'; setEnemyHP(C.finalHP(L)); }
+  else { state.stage = 'zako'; setEnemyHP(C.zakoHP(L)); }
+  monsterEl.classList.remove('dying');
+  newProblem();
+  if (c.final) bossWarn(true);
+  setMessage((c.final ? c.boss.name + 'が あらわれた！\nここからは 問題集の ことばで 出るぞ！' : c.title + '\n' + c.enemy.name + 'が　あらわれた！') + '\n' + hint());
+}
+function answerNow() { return { opt: state.opt }; }
+function submit() {
+  const q = p();
+  if (state.phase !== 'play' || !q) return;
+  if (state.tut) { tutDecide(); return; }
+  if (!ready()) { setMessage(hint()); return; }
+  const ans = answerNow(), ok = C.judge(q, ans);
+  const cls = ok ? null : C.classify(q, ans);
+  const ev = C.record(state.ctx, q, ok, cls, Math.round(performance.now() - state.shownAt));
+  if (ok) onCorrect(ev); else onWrong(cls);
+}
+function onCorrect(ev) {
+  const c = chap(), e = atBoss() ? c.boss : c.enemy, q = p();
+  state.combo = (state.combo || 0) + 1;
+  const hit = C.damage(q, heroLV(), ev, rng, state.combo);
+  state.phase = 'busy'; state.reveal = true; state.hp -= hit.d;
+  // 大ボスは 5つの 単元を 出しきるまで たおれない
+  let hold = false;
+  if (c.final && loadProg().lap === 1 && state.hp <= 0 && state.fi < state.plan.boss.length - 1) { state.hp = 1; hold = true; }   // 1周目だけ 5つ ぜんぶ 出す
+  draw(); renderControls(); renderStatus();
+  flashScreen(); if (hit.crit) setTimeout(flashScreen, 180);
+  monsterAnim('hit'); showDamage('-' + hit.d, hit.crit ? '#ff9900' : '#ffff00');
+  const lines = ['せいかい！　' + e.name + 'に　' + hit.d + ' の ダメージ！'];
+  if (hit.crit) lines.unshift('かいしんの いちげき！');
+  if (q.target && q.target.lv) lines.push('（にがての もんだいに せいかい ＋1）');
+  if (C.comboBonus(state.combo) > 0) lines.push('れんぞく せいかい ×' + state.combo + '（＋' + C.comboBonus(state.combo) + '）');
+  ev.mastered.forEach(t => lines.push('◎ ' + C.masterText(t) + ' こくふく！'));
+  if (hold) lines.push(e.name + '「まだ たおれぬ！」');
+  setMessage(lines.join('\n'));
+  if (hit.crit) showCrit();
+  setTimeout(() => {
+    if (state.stage === 'boss') state.fi += 1;
+    if (state.hp > 0) { newProblem(); setMessage('のこり HP ' + state.hp + '！\n' + hint()); return; }
+    monsterEl.classList.add('dying'); setMessage(e.name + 'を　たおした！'); renderStatus();
+    setTimeout(afterDefeat, 1100);
+  }, hit.crit ? 1500 : 1100);
+}
+function showCrit() {
+  const el = document.createElement('div'); el.className = 'level-up crit'; el.textContent = 'かいしんの いちげき！';
+  gameEl.appendChild(el); setTimeout(() => el.remove(), 1500);
+}
+function afterDefeat() {
+  const c = chap(), L = heroLV();
+  monsterEl.classList.remove('dying');
+  state.lives = MAX_LIVES;
+  if (state.stage === 'zako' && state.zi < C.NORMAL - 1) {
+    state.zi += 1; setEnemyHP(C.zakoHP(L)); newProblem();
+    setMessage('また ' + c.enemy.name + 'が　あらわれた！\n' + hint()); return;
+  }
+  if (state.stage === 'zako') {   // 中ボス
+    state.zi = C.NORMAL; state.stage = 'boss'; state.fi = 0; setEnemyHP(C.midHP(L)); newProblem();
+    bossWarn(false);
+    setMessage('中ボス ' + c.boss.name + 'が あらわれた！\nここからは 問題集の ことばで 出るぞ！\n' + hint()); return;
+  }
+  chapterClear();
+}
+function chapterClear() {
+  gameEl.classList.remove('boss-mid', 'boss-final');
+  const c = chap(), pr = loadProg(), before = heroLV();
+  state.phase = 'idle';
+  const lines = [];
+  if (!c.final) {
+    if (!isMaster(pr) && !pr.cur[c.ch]) {   // この 周で はじめて クリア → LV ＋1、★ ふえる
+      pr.cur[c.ch] = true; pr.gained += 1; pr.stars[c.ch] = pr.lap;
+      lines.push('LEVEL UP！　LV ' + before + ' → ' + (before + 1) + '　こうげき力 ' + attack(before) + ' → ' + attack(before + 1));
+      showLevelUp();
+    } else if (!isMaster(pr)) lines.push('（この 周では もう クリアずみ。ほかの 章を クリアすると LV が あがる）');
+    const n = [1, 2, 3, 4, 5].filter(k => pr.cur[k]).length;
+    lines.push(isMaster(pr) ? '👑 マスター' : pr.lap + '周目：クリアした 章 ' + n + '/5');
+    if (n === 5 && !isMaster(pr)) lines.push('さいごの 章が ひらいた！');
+  } else {
+    pr.stars[6] = Math.min(MAX_LAP, isMaster(pr) ? MAX_LAP : pr.lap);
+    const done = pr.lap;
+    if (!isMaster(pr)) { pr.lap += 1; pr.cur = {}; }
+    lines.push('GAME CLEAR!　' + Math.min(done, MAX_LAP) + '周目 クリア！');
+    lines.push(isMaster(pr) ? '👑 ★3 まで あつめた！ マスター！' : 'つぎは ' + pr.lap + '周目。5つの 章を もう いちど クリアしよう（LV も また あがる）');
+  }
+  saveProg(pr);
+  $('clearHero').textContent = c.boss.sprite;
+  $('clearTitle').textContent = c.boss.name + 'を たおした！';
+  $('clearText').textContent = lines.join('\n');
+  $('resetBtn1').classList.toggle('hidden', !c.final);
+  $('clearScreen').classList.remove('hidden');
+}
+function starStr(n) { n = Math.min(n, MAX_LAP); return '<span class="stars">' + '★'.repeat(n) + '<span class="dim">' + '☆'.repeat(MAX_LAP - n) + '</span></span>'; }
+function showMap() {
+  const pr = loadProg(), L = heroLV();
+  const items = C.CHAPTERS.map(c => {
+    const st = starStr(pr.stars[c.ch] || 0);
+    const doneNow = c.final ? false : (isMaster(pr) || !!pr.cur[c.ch]);
+    if (c.final && !finalOpen(pr)) return '<button class="chap locked" disabled>🔒 さいごの 章' + st + '<span class="unit">この 周で 1〜5章を クリアで ひらく</span></button>';
+    return '<button class="chap" data-ch="' + c.ch + '">' + (doneNow ? '✅ ' : '▶ ') + c.title + st + '<span class="unit">' +
+      (c.final ? 'ボス ' + c.boss.name + '（問題集の ことばで 5つの 単元）' : 'ザコ 2体 → 中ボス ' + c.boss.name) + '</span></button>';
+  }).join('') + (pr.stars[6] ? '<button class="chap reset" id="resetBtn2">🔄 1周目の LV 1 に もどって あそぶ</button>' : '');
+  $('mapLV').textContent = (isMaster(pr) ? '👑 マスター' : pr.lap + '周目') + '　ゆうしゃ LV ' + L + '　こうげき力 ' + attack(L);
+  $('chapterList').innerHTML = items;
+  $('chapterList').querySelectorAll('.chap[data-ch]').forEach(b => b.addEventListener('click', () => { $('mapScreen').classList.add('hidden'); state.ctx = C.newContext(); startChapter(+b.dataset.ch); }));
+  if (pr.stars[6]) $('resetBtn2').addEventListener('click', () => $('resetScreen').classList.remove('hidden'));
+  $('mapScreen').classList.remove('hidden');
+  state.phase = 'idle';
+}
+function resetAll() {
+  memProg = newProg();
+  try { localStorage.removeItem('kahou-progress'); localStorage.removeItem('kahou-tut'); } catch (e) { /* 消せなくても その回は最初から */ }
+  ['resetScreen', 'clearScreen', 'mapScreen'].forEach(id => $(id).classList.add('hidden'));
+  state.ctx = C.newContext(); state.phase = 'idle';
+  $('titleScreen').classList.remove('hidden');
+}
+function onWrong(cls) {
+  const q = p();
+  state.combo = 0;
+  state.lives -= 1; state.phase = 'next'; state.reveal = true;
+  draw(); renderControls(); renderStatus();
+  monsterAnim('miss-dmg'); showDamage('MISS', '#ff4444');
+  setMessage(['ざんねん！　' + C.describe(q, cls), 'ただしい こたえは こう（きいろ）', ...q.reason].join('\n'));
+  state.onNext = state.lives <= 0
+    ? () => { state.phase = 'idle'; $('gameOverScreen').classList.remove('hidden'); }
+    : () => { newProblem(); setMessage((p().target.lv ? 'にた もんだいで たしかめよう！' : 'もういちど！') + '\n' + hint()); };
+}
+function next() { if (state.phase !== 'next' || !state.onNext) return; const cb = state.onNext; state.onNext = null; cb(); }
+
+// ---------- チュートリアル ----------
+const TUT = [
+  { lv: 1, prm: { mode: 'form', fn: 'sin', op: 1 }, msg: '【れんしゅう 1/3】sin は「sin cos ＋ cos sin」。符号は そのまま。\n光っている ものを えらぼう', wrong: 'sin(α ＋ β) は sinα cosβ ＋ cosα sinβ だよ' },
+  { lv: 2, prm: { mode: 'split', fn: 'sin', u: 5, unit: 'deg' }, msg: '【れんしゅう 2/3】75° は 値を 知っている 45° と 30° に わける。\n光っている ものを えらぼう', wrong: '45° と 30° は 値を 知っている 角だよ' },
+  { lv: 5, prm: { mode: 'est', fn: 'sin', u: 5, unit: 'deg' }, msg: '【れんしゅう 3/3】75° は 90° に 近い → sin は 1 に 近い。\n光っている ものを えらぼう', wrong: '(√6 ＋ √2)/4 ≒ 0.97 で 1 に 近いよ' },
+];
+function tutDone() { try { return localStorage.getItem('kahou-tut') === '1'; } catch (e) { return false; } }
+let pulseId = null;
+function pulse(id) {
+  pulseId = id;
+  $('decideBtn').classList.toggle('pulse', id === 'decideBtn');
+  optBtns.forEach((b, i) => b.classList.toggle('pulse', id === 'opt' + i));
+  $('btnHint').classList.toggle('hidden', !id); placeBtnHint();
+}
+function placeBtnHint() {
+  if (!pulseId) return;
+  const el = pulseId.startsWith('opt') ? optBtns[+pulseId[3]] : $(pulseId);
+  const b = el.getBoundingClientRect(), g = gameEl.getBoundingClientRect();
+  $('btnHint').style.left = (b.left - g.left + b.width * 0.84) + 'px';
+  $('btnHint').style.top = (b.top - g.top + 26) + 'px';
+}
+function startTutorial() {
+  state.tut = { i: 0, step: 'opt' };
+  state.ch = 1; state.stage = 'zako'; state.zi = 0; state.hp = 1; state.maxHp = 1; state.lives = MAX_LIVES;
+  monsterEl.textContent = '🎯'; monsterEl.className = ''; $('monsterName').textContent = 'まと';
+  $('skipTut').classList.remove('hidden');
+  tutProblem();
+}
+function tutProblem() {
+  const t = TUT[state.tut.i];
+  state.problem = C.build(t.lv, 'fwd', t.prm, Math.random);
+  resetInput(); state.phase = 'play';
+  renderProblem(); renderControls(); renderStatus(); pulse(null);
+  setMessage(t.msg);
+  state.tut.step = 'opt'; pulse('opt' + p().options.findIndex(o => o.correct));
+  draw();
+}
+function tutOpt(i) {
+  const q = p(), t = TUT[state.tut.i];
+  if (state.tut.step !== 'opt') return;
+  if (!q.options[i].correct) { setMessage(t.wrong); return; }
+  state.opt = i; state.tut.step = 'decide'; renderControls(); setMessage('さいごに「けってい」を おそう'); pulse('decideBtn');
+}
+function tutDecide() {
+  if (state.tut.step !== 'decide') return;
+  const last = state.tut.i === TUT.length - 1;
+  pulse(null); state.reveal = true; state.phase = 'next';
+  renderControls(); draw(); flashScreen(); monsterAnim('hit');
+  setMessage('せいかい！\n' + (last ? 'これで れんしゅうは おしまい' : 'つぎの れんしゅうへ'));
+  state.onNext = last ? () => { state.phase = 'idle'; $('tutDoneScreen').classList.remove('hidden'); } : () => { state.tut.i += 1; tutProblem(); };
+}
+function endTutorial() {
+  pulse(null); state.tut = null; $('skipTut').classList.add('hidden');
+  try { localStorage.setItem('kahou-tut', '1'); } catch (e) { /* 保存できなくても遊べる */ }
+  showMap();
+}
+
+// ---------- 操作 ----------
+optBtns.forEach((b, i) => b.addEventListener('click', () => {
+  if (state.phase !== 'play') return;
+  if (state.tut) { tutOpt(i); return; }
+  state.opt = i; renderControls();
+}));
+$('decideBtn').addEventListener('click', submit);
+$('nextBtn').addEventListener('click', next);
+$('startBtn').addEventListener('click', () => { $('titleScreen').classList.add('hidden'); state.ctx = C.newContext(); if (tutDone()) showMap(); else startTutorial(); });
+$('howBtn').addEventListener('click', () => { $('titleScreen').classList.add('hidden'); startTutorial(); });
+$('skipTut').addEventListener('click', () => { if (state.tut) endTutorial(); });
+$('goBtn').addEventListener('click', () => { $('tutDoneScreen').classList.add('hidden'); endTutorial(); });
+$('retryBtn').addEventListener('click', () => { $('gameOverScreen').classList.add('hidden'); startChapter(state.ch); });
+$('toMapBtn').addEventListener('click', () => { $('gameOverScreen').classList.add('hidden'); showMap(); });
+$('clearBtn').addEventListener('click', () => { $('clearScreen').classList.add('hidden'); showMap(); });
+$('resetBtn1').addEventListener('click', () => $('resetScreen').classList.remove('hidden'));
+$('resetYes').addEventListener('click', resetAll);
+$('resetNo').addEventListener('click', () => $('resetScreen').classList.add('hidden'));
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  e.preventDefault();
+  if (e.repeat) return;
+  if (!$('resetScreen').classList.contains('hidden') || !$('mapScreen').classList.contains('hidden')) return;
+  const overlayBtn = { titleScreen: 'startBtn', tutDoneScreen: 'goBtn', clearScreen: 'clearBtn', gameOverScreen: 'retryBtn' };
+  for (const id in overlayBtn) if (!$(id).classList.contains('hidden')) { $(overlayBtn[id]).click(); return; }
+  if (state.phase === 'next') next();
+  else if (state.phase === 'play' && e.key === 'Enter') submit();
+});
+
+new ResizeObserver(resizePlane).observe(wrap);
+renderStatus(); renderEnemy(); renderControls();
+})();
+</script>
+</body>
+</html>
