@@ -257,7 +257,7 @@ letter-spacing: 4px; z-index: 20; animation: lvUp 1.8s forwards; pointer-events:
     <p style="margin-top:24px;">こうしきの かたちを みきわめ<br>モンスターを うちたおせ！</p>
     <button class="start-btn" id="startBtn">▶ はじめる</button>
     <button class="how-btn" id="howBtn">？ あそびかた</button>
-    <p class="sub" style="margin-top:20px;font-size:10px;">6つの 章（どこからでも）→ さいごの 章</p>
+    <p class="sub" style="margin-top:20px;font-size:10px;">5つの 章（どこからでも）→ さいごの 章</p>
   </div>
 
   <div class="overlay hidden" id="tutDoneScreen">
@@ -267,7 +267,7 @@ letter-spacing: 4px; z-index: 20; animation: lvUp 1.8s forwards; pointer-events:
       <div>・<b>sin</b> は「sin cos ± cos sin」<b>符号 そのまま</b></div>
       <div>・<b>cos</b> は「cos cos ∓ sin sin」<b>符号 はんたい</b></div>
       <div>・角は <b>30°・45°・60°</b> などに わける</div>
-      <div>・答えは <b>大きさと 符号</b>で 見当を つける</div>
+      <div>・2倍角は <b>sin2α ＝ 2sinα cosα</b></div>
     </div>
     <button class="start-btn" id="goBtn">▶ しょうえらびへ</button>
   </div>
@@ -410,18 +410,6 @@ function splitsOf(u) {     // u ＝ a ± b（a は 知っている 角、b は 3
 // 大きい 角を 先に 書く（ひく ときも 大きい ほうから）
 const splitVal = ([a, b, op]) => Math.max(a, b) + op * Math.min(a, b);
 const splitText = ([a, b, op], unit) => angText(Math.max(a, b), unit) + ' ' + pm(op) + ' ' + angText(Math.min(a, b), unit);
-// 15° の 奇数倍の 値：|sin|・|cos| は (√6 ± √2)/4、|tan| は 2 ± √3
-const EST = { big: { sc: '{√6 ＋ √2|4}', t: '2 ＋ √3' }, small: { sc: '{√6 − √2|4}', t: '2 − √3' } };
-function estText(fn, s, big) {
-  const k = fn === 'tan' ? 't' : 'sc';
-  if (k === 't' && s < 0) return big ? '−2 − √3' : '−2 ＋ √3';
-  return (s < 0 ? MINUS : '') + EST[big ? 'big' : 'small'][k];
-}
-function estTrue(fn, u) {   // 本当の 符号と 大きさ
-  const t = u * Math.PI / 12, v = fn === 'sin' ? Math.sin(t) : fn === 'cos' ? Math.cos(t) : Math.tan(t);
-  return { s: Math.sign(v), big: Math.abs(v) > (fn === 'tan' ? 1 : Math.SQRT1_2) };
-}
-const nearY = u => mod(u, 12) === 5 || mod(u, 12) === 7;   // 動径が y軸に 近い（75°・105° など）
 // ---------- tan の 値と 範囲から 角を きめる（問題集 292）・なす角（293・294） ----------
 const TANV = { '1': 3, '√3': 4, '√3/3': 2 };            // tan の 値 → 角（π/12 単位、0〜π/2）
 const tanOf = u => {   // π/12 単位の 角の tan（文字）。値が ない ときは null
@@ -460,7 +448,6 @@ function fracStr(n, d) { if (d < 0) { n = -n; d = -d; } const g = gcd(n, d); n /
 // form { fn, op }　式 → 展開（4択）｜ formRev { fn, op, deg } 展開 → 1つの 式（逆向き。ボスは 角の 数で）
 // split { fn, u, unit } 角の 分け方 ｜ pair { qa, qb, fa, fb } 2つの 角の 符号 ｜ dsign { q } sin2α の 符号
 // dform { fn, k } 2倍角の 形 ｜ dpick { know } cos2α の どの 形を 使うか ｜ drev { k, x } 2倍角に まとめる（逆向き）
-// est { fn, u, unit } 大きさと 符号で 値を えらぶ
 function genPrm(lv, kind, rng, opt) {
   const boss = !!(opt && opt.boss);
   if (lv === 1) {
@@ -493,7 +480,7 @@ function genPrm(lv, kind, rng, opt) {
     if (rng() < 0.6) { const fn = pick(rng, FNS); return { mode: 'dform', fn, k: fn === 'cos' ? pick(rng, ['cs', 'c', 's']) : fn === 'sin' ? 'sc' : 't', h: pick(rng, ['α', 'θ']) }; }
     return { mode: 'dpick', know: pick(rng, ['sin', 'cos']), va: ri(rng, 0, FR.length - 1) };
   }
-  if (lv === 6) {   // なす角：傾きを よむ → tan(β − α) の 式 → 鋭角を えらぶ
+  if (lv === 5) {   // なす角：傾きを よむ → tan(β − α) の 式 → 鋭角を えらぶ
     const t = rng();
     if (t < 0.34) {
       const ln = () => { for (;;) { const a = ri(rng, 1, 3), b = pick(rng, [-3, -2, -1, 1, 2, 3]), c = pick(rng, [-5, -4, -3, -2, -1, 1, 2, 3, 4, 5]); if (Math.abs(a) !== Math.abs(b) && gcd(gcd(a, b), c) === 1) return [a, b, c]; } };
@@ -505,7 +492,6 @@ function genPrm(lv, kind, rng, opt) {
     }
     return { mode: t < 0.67 ? 'nasu' : 'acute', k: ri(rng, 0, NASU.length - 1) };
   }
-  return { mode: 'est', fn: pick(rng, FNS), u: pick(rng, ODD15), unit: rng() < 0.5 ? 'deg' : 'rad' };
 }
 
 function makeOptions(p, rng) {
@@ -566,13 +552,6 @@ function makeOptions(p, rng) {
     else if (q.k === 't') c.push(['2tan' + a, ['naive']]);
     else c.push(['1', ['pyth']]);
   }
-  if (q.mode === 'est') {
-    const T = estTrue(q.fn, q.u);
-    for (const [s, big] of [[1, true], [1, false], [-1, false], [-1, true]]) {   // 大きい 順
-      const types = []; if (s !== T.s) types.push('sign'); if (big !== T.big) types.push('size');
-      c.push([estText(q.fn, s, big), types]);
-    }
-  }
   if (q.mode === 'tanAng') {
     // 正解の 角、同じ tan で 範囲の 外、tan の 符号が 逆、tan の 値が ちがう（範囲の 中）を 近い ものから
     const right = (() => { for (let u = -12; u <= 24; u++) if (tanOf(u) === q.v && inR(u, q.r)) return u; })();
@@ -612,7 +591,7 @@ const numFr = s => { const neg = s.startsWith(MINUS), t = neg ? s.slice(1) : s, 
 function build(lv, kind, prm, rng, opt = {}) {
   const p = { lv, kind, prm, mode: prm.mode };
   const q = prm;
-  p.fig = ['split', 'pair', 'dsign', 'est'].includes(q.mode) ? 'circle' : ['slope', 'nasu', 'acute'].includes(q.mode) ? 'lines' : 'card';
+  p.fig = ['split', 'pair', 'dsign'].includes(q.mode) ? 'circle' : ['slope', 'nasu', 'acute'].includes(q.mode) ? 'lines' : 'card';
   if (q.mode === 'split') p.split = splitsOf(q.u)[0];
   p.options = makeOptions(p, rng);
   const A = q.u !== undefined ? angText(q.u, q.unit) : '';
@@ -628,7 +607,6 @@ function build(lv, kind, prm, rng, opt = {}) {
     dform: ['▼ 2倍角の かたちは？', q.fn + twice(q.h) + ' ＝ ？'],
     dpick: ['▼ どの 形を つかう？', q.know + 'α の 値 だけ わかっている。cos2α を 求める 形は？'],
     drev: ['▼ どの 式に まとまる？', q.k ? dbl(q.k, xd) + ' ＝ ？' : ''],
-    est: ['▼ 大きさと 符号で えらべ', fA + ' の 値は？'],
     tanAng: ['▼ 角は どれ？', q.v ? 'tanθ ＝ ' + q.v + '、' + RANGES[q.r][2] + ' の とき θ ＝ ？' : ''],
     slope: ['▼ 傾きは？', q.l1 ? '直線 ' + lineText(...q.l1) + ' の 傾きは？' : ''],
     nasu: ['▼ なす角の 式は？', typeof q.k === 'number' ? lineY(NASU[q.k][0]) + '、' + lineY(NASU[q.k][1]) + ' が x軸と なす角を α、β と する。tan(β − α) ＝ ？' : ''],
@@ -649,7 +627,6 @@ function build(lv, kind, prm, rng, opt = {}) {
       dform: ['2倍角の 公式を 用いて ' + (q.fn || '') + twice(q.h) + ' を 表した 式 として 正しい ものは どれか。'],
       dpick: [(q.know || '') + 'α ＝ ' + FR[q.va || 0] + ' の とき、cos2α の 値を 求める。用いる 式 として 最も 適した ものは どれか。'],
       drev: ['次の 式を 1つの 三角関数で 表せ。　' + (q.k ? dbl(q.k, xd) : '')],
-      est: [fA + ' の 値を 求めよ。'],
       tanAng: q.ex !== null && q.ex !== undefined ? (() => { const e = TANEX[q.ex], ab = 'α ' + pm(e.op) + ' β';
         return ['tanα ＝ ' + e.ta + '、tanβ ＝ ' + e.tb + ' の とき、tan(' + ab + ') ＝ ' + e.v + ' で ある。' + RANGES[e.r][2].replace('θ', ab) + ' の とき、' + ab + ' の 値を 求めよ。']; })() : [''],
       slope: q.l1 ? ['2直線 ' + lineText(...q.l1) + '、' + lineText(...(q.l2 || q.l1)) + ' の なす角を 求める。直線 ' + lineText(...q.l1) + ' の 傾きは どれか。'] : [''],
@@ -686,9 +663,9 @@ const TYPE_TEXT = {
   coef: '2 を わすれた', unknown: '式は 正しいが、値を 知らない 角（15° ＝ π/12 など）が はいっている',
   value: 'たしても（ひいても）もとの 角に ならない', pick: 'わかっていない ほうの 値が いる 形を えらんだ',
   pyth: 'sin² ＋ cos² ＝ 1 と とりちがえた', range: 'tan の 値は あうが、範囲に 入っていない', plus: 'なす角は 角の 差。和の 式（tan(α ＋ β)）を えらんだ', tanv: 'tan の 値が ちがう 角（π/6 は √3/3、π/4 は 1、π/3 は √3）', inv: '傾きを 逆数に した',
-  acute: 'なす角は 0 ＜ θ ＜ π/2（鋭角）。鈍角の ほうを えらんだ', size: '大きさ（1 に 近いか 0 に 近いか）が ちがう', scatter: 'えらびかたが ばらばら',
+  acute: 'なす角は 0 ＜ θ ＜ π/2（鋭角）。鈍角の ほうを えらんだ', scatter: 'えらびかたが ばらばら',
 };
-const MASTER_TEXT = { plus: '差の 式', tanv: 'tan の 値と 角', range: '範囲で 角を きめる', inv: '傾きの 読み方', acute: 'なす角は 鋭角', sign: '＋ と −', swap: 'sin と cos', naive: 'そのまま わけない', frac: '分子と 分母', coef: '2 を つける', unknown: '知っている 角に わける', value: 'もとの 角に もどる 分け方', pick: 'わかっている 方の 形', pyth: '2倍角と sin² ＋ cos²', size: '大きさの 見当' };
+const MASTER_TEXT = { plus: '差の 式', tanv: 'tan の 値と 角', range: '範囲で 角を きめる', inv: '傾きの 読み方', acute: 'なす角は 鋭角', sign: '＋ と −', swap: 'sin と cos', naive: 'そのまま わけない', frac: '分子と 分母', coef: '2 を つける', unknown: '知っている 角に わける', value: 'もとの 角に もどる 分け方', pick: 'わかっている 方の 形', pyth: '2倍角と sin² ＋ cos²' };
 function describe(p, cls) { return cls.types.map(t => TYPE_TEXT[t]).join('、'); }
 function masterText(t) { return MASTER_TEXT[t]; }
 
@@ -734,13 +711,6 @@ function reasonLines(p) {
     L.push(v.startsWith(MINUS) ? 'tan(β − α) が 負 → β − α は 鈍角。なす角は π −（β − α）の 鋭角 → tanθ ＝ ' + v.slice(1) : 'tan(β − α) ＝ ' + v + ' → β − α は 鋭角 → それが なす角');
     L.push('→ θ ＝ ' + right);
   }
-  if (q.mode === 'est') {
-    const T = estTrue(q.fn, q.u), A = angText(q.u, q.unit);
-    L.push(q.fn + ' は 単位円の ' + { sin: 'y座標', cos: 'x座標', tan: '傾き（y ÷ x）' }[q.fn] + '。' + A + ' の 動径は ' + (nearY(q.u) ? 'y軸' : 'x軸') + ' に 近い');
-    L.push('→ 符号は ' + sgnStr(T.s) + '、' + (T.big ? (q.fn === 'tan' ? '1 より 大きい' : '1 に 近い') : '0 に 近い'));
-    L.push(q.fn === 'tan' ? '2 ＋ √3 ≒ 3.7、2 − √3 ≒ 0.27' : '√6 ≒ 2.45、√2 ≒ 1.41 → {√6 ＋ √2|4} ≒ 0.97、{√6 − √2|4} ≒ 0.26');
-    L.push('→ ' + q.fn + ' ' + A + ' ＝ ' + right);
-  }
   return L;
 }
 
@@ -754,7 +724,7 @@ function likeOK(q, m, types) {
 // 問題の 中身が かぶるか（直前の 1問と くらべる）
 function clash(a, b) {
   if (a.mode !== b.mode) return false;
-  const key = { tanAng: ['v', 'r'], slope: ['l1'], nasu: ['k'], acute: ['k'], form: ['fn', 'op'], formRev: ['fn', 'op'], split: ['u'], pair: ['qa', 'qb', 'fa', 'fb'], dsign: ['q'], dform: ['fn', 'k', 'h'], dpick: ['know'], drev: ['k'], est: ['fn', 'u'] }[a.mode];
+  const key = { tanAng: ['v', 'r'], slope: ['l1'], nasu: ['k'], acute: ['k'], form: ['fn', 'op'], formRev: ['fn', 'op'], split: ['u'], pair: ['qa', 'qb', 'fa', 'fb'], dsign: ['q'], dform: ['fn', 'k', 'h'], dpick: ['know'], drev: ['k'] }[a.mode];
   return key.every(k => JSON.stringify(a[k]) === JSON.stringify(b[k]));
 }
 // ---------- 章・ダメージ・HP（グラフクエストと おなじ） ----------
@@ -764,9 +734,8 @@ const CHAPTERS = [
   { ch: 2, lv: 2, title: '第2章 わける', enemy: { name: 'ワケミ', sprite: '✂️' }, boss: { name: 'ブンカツオウ', sprite: '🪓' } },
   { ch: 3, lv: 3, title: '第3章 ふごう', enemy: { name: 'ショウゲン', sprite: '🧭' }, boss: { name: 'ショウゲンオウ', sprite: '🌀' } },
   { ch: 4, lv: 4, title: '第4章 倍角', enemy: { name: 'フタゴ', sprite: '👯' }, boss: { name: 'バイカクノヌシ', sprite: '🐉' } },
-  { ch: 5, lv: 5, title: '第5章 みつもり', enemy: { name: 'メキキ', sprite: '👀' }, boss: { name: 'ミツモリオウ', sprite: '🔮' } },
-  { ch: 6, lv: 6, title: '第6章 なす角', enemy: { name: 'カクド', sprite: '📐' }, boss: { name: 'ナスカクオウ', sprite: '📏' } },
-  { ch: 7, final: true, title: 'さいごの 章', boss: { name: 'テイリノオウ', sprite: '🏯' } },
+  { ch: 5, lv: 5, title: '第5章 なす角', enemy: { name: 'カクド', sprite: '📐' }, boss: { name: 'ナスカクオウ', sprite: '📏' } },
+  { ch: 6, final: true, title: 'さいごの 章', boss: { name: 'テイリノオウ', sprite: '🏯' } },
 ];
 const HAS_REV = [1, 4];   // 逆向き（展開 → 1つの 式）が ある 章
 function chapterPlan(ch, rng) {
@@ -823,7 +792,7 @@ function record(ctx, p, ok, cls, ms) {
 }
 
 G.KahouCore = {
-  FNS, QS, KNOWN, ODD15, SMALL, NASU, TANEX, RANGES, tanOf, nasuV, lineText, angStr12, degStr, angText, expand, dbl, sgn, splitsOf, estTrue, nearY,
+  FNS, QS, KNOWN, ODD15, SMALL, NASU, TANEX, RANGES, tanOf, nasuV, lineText, angStr12, degStr, angText, expand, dbl, sgn, splitsOf,
   genPrm, build, judge, classify, describe, masterText, likeOK, clash,
   CHAPTERS, NORMAL, HAS_REV, chapterPlan, zakoHP, midHP, finalHP, CRIT, comboBonus, damage, newContext, makeProblem, record, mulberry32,
 };
@@ -914,7 +883,7 @@ function bossWarn(final) {
   gameEl.appendChild(el); setTimeout(() => el.remove(), 2000);
 }
 // 式は 1行に まとめる：問題集の 文の「　」の あとの 式は 次の 行に、式だけの 問題は まるごと。はみ出す ときは 字を 小さく
-const FORMULA_ONLY = ['form', 'formRev', 'dform', 'drev', 'est', 'tanAng'];
+const FORMULA_ONLY = ['form', 'formRev', 'dform', 'drev', 'tanAng'];
 function renderProblem() {
   const q = p(), d = q.display, el = $('problemExpr');
   $('problemLabel').textContent = q.label;
@@ -1101,28 +1070,6 @@ function draw() {
       label((m.u > hi ? '＋' : '−') + ang(lo), X(mid[0] * 0.75), Y(mid[1] * 0.75), YEL, 12);
     }
   }
-  if (m.mode === 'est') {
-    const [c, s] = dir(m.u), px = X(c), py = Y(s);
-    arc(0, m.u, R * 0.18, 'rgba(255,255,255,0.7)');
-    if (m.fn === 'tan') {   // 傾き：動径を のばした 直線
-      ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.2 * d; ctx.setLineDash([5 * d, 4 * d]);
-      const k = 1.3 / Math.max(Math.abs(c), Math.abs(s));
-      ctx.beginPath(); ctx.moveTo(X(-c * k), Y(-s * k)); ctx.lineTo(X(c * k), Y(s * k)); ctx.stroke(); ctx.setLineDash([]);
-    }
-    ray(m.u, '#fff', 2.2);
-    // 点から x軸へ 点線。答えの ときは sin は その 高さ、cos は x軸の 上の 長さを きいろで
-    if (m.fn !== 'tan') {
-      ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.3 * d; ctx.setLineDash([4 * d, 3 * d]);
-      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, cy); ctx.stroke(); ctx.setLineDash([]);
-      if (state.reveal) {
-        ctx.strokeStyle = YEL; ctx.lineWidth = 3.5 * d; ctx.beginPath();
-        if (m.fn === 'sin') { ctx.moveTo(px, py); ctx.lineTo(px, cy); } else { ctx.moveTo(cx, cy); ctx.lineTo(px, cy); }
-        ctx.stroke();
-      }
-    }
-    ctx.fillStyle = state.reveal ? YEL : '#fff'; ctx.beginPath(); ctx.arc(px, py, 5 * d, 0, Math.PI * 2); ctx.fill();
-    label(ang(m.u), X(c * 1.22), Y(s * 1.22), '#fff');
-  }
 }
 
 // ---------- 演出 ----------
@@ -1289,7 +1236,7 @@ function next() { if (state.phase !== 'next' || !state.onNext) return; const cb 
 const TUT = [
   { lv: 1, prm: { mode: 'form', fn: 'sin', op: 1 }, msg: '【れんしゅう 1/3】sin は「sin cos ＋ cos sin」。符号は そのまま。\n光っている ものを えらぼう', wrong: 'sin(α ＋ β) は sinα cosβ ＋ cosα sinβ だよ' },
   { lv: 2, prm: { mode: 'split', fn: 'sin', u: 5, unit: 'deg' }, msg: '【れんしゅう 2/3】75° は 値を 知っている 45° と 30° に わける。\n光っている ものを えらぼう', wrong: '45° と 30° は 値を 知っている 角だよ' },
-  { lv: 5, prm: { mode: 'est', fn: 'sin', u: 5, unit: 'deg' }, msg: '【れんしゅう 3/3】75° は 90° に 近い → sin は 1 に 近い。\n光っている ものを えらぼう', wrong: '(√6 ＋ √2)/4 ≒ 0.97 で 1 に 近いよ' },
+  { lv: 4, prm: { mode: 'dform', fn: 'sin', k: 'sc', h: 'α' }, msg: '【れんしゅう 3/3】sin2α ＝ sin(α ＋ α) ＝ 2sinα cosα。\n光っている ものを えらぼう', wrong: 'sin2α は 2sinα cosα だよ（2sinα では ない）' },
 ];
 function tutDone() { try { return localStorage.getItem('kahou-tut') === '1'; } catch (e) { return false; } }
 let pulseId = null;
