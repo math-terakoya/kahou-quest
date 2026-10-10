@@ -900,9 +900,10 @@ function bossWarn(final) {
   gameEl.appendChild(el); setTimeout(() => el.remove(), 2000);
 }
 // 式は 1行に まとめる：問題集の 文の「　」の あとの 式は 次の 行に、式だけの 問題は まるごと。はみ出す ときは 字を 小さく
+const PUNC = t => t.replace(/。/g, '．').replace(/、/g, '，');   // 問題文は 教科書と おなじ「，」「．」（「。」が 度の「°」に 見えないように）
 const FORMULA_ONLY = ['form', 'formRev', 'dform', 'drev', 'tanAng'];
 function renderProblem() {
-  const q = p(), d = q.display, el = $('problemExpr');
+  const q = p(), d = PUNC(q.display), el = $('problemExpr');
   $('problemLabel').textContent = q.label;
   const cut = d.indexOf('　');
   if (cut >= 0) el.innerHTML = mathHTML(d.slice(0, cut), true) + '<br><span class="nw">' + mathHTML(d.slice(cut + 1), true) + '</span>';
