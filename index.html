@@ -207,7 +207,7 @@ padding: 8px 18px; font-size: 13px; letter-spacing: 2px; cursor: pointer; margin
 .chap .stars { float: right; color: #ffd84a; letter-spacing: 1px; }
 .chap .stars .dim { color: #444; }
 .how-btn.hidden { display: none; }
-#problem .expr.exam { font-size: 14px; text-align: left; line-height: 1.6; }
+#problem .expr.exam { font-size: 14px; text-align: left; line-height: 1.6; word-break: keep-all; }   /* ことばの 途中で 改行しない（空白で 切る） */
 #problem .nw { display: inline-block; white-space: nowrap; }   /* 式は 行の 途中で 切らない */
 /* — ボス戦 — */
 #game.boss-mid .rpg-window { border-color: #ff5a5a; box-shadow: 0 0 0 3px #000, 0 0 0 5px #ff5a5a; }
@@ -901,14 +901,22 @@ function bossWarn(final) {
 }
 // 式は 1行に まとめる：問題集の 文の「　」の あとの 式は 次の 行に、式だけの 問題は まるごと。はみ出す ときは 字を 小さく
 const PUNC = t => t.replace(/。/g, '．').replace(/、/g, '，');   // 問題文は 教科書と おなじ「，」「．」（「。」が 度の「°」に 見えないように）
+// 問題集の ことばは「条件」と「どうするか」の あいだで 改行：いちばん 後ろの「の とき、」など の あと、なければ 最後の 文の まえ
+function examLines(t) {
+  let i = -1;
+  for (const m of t.matchAll(/(?:の とき|あるとき|範囲で|ついて|グラフで)[、。]/g)) i = m.index + m[0].length;   // 「おく とき」「求める とき」は どうするか の ほう
+  if (i < 0) { const j = t.slice(0, -1).lastIndexOf('。'); if (j >= 0 && !t.startsWith('ただし', j + 1)) i = j + 1; }   // 「ただし」は 切らない
+  return i > 0 && i < t.length ? [t.slice(0, i), t.slice(i)] : [t];
+}
 const FORMULA_ONLY = ['form', 'formRev', 'dform', 'drev', 'tanAng'];
 function renderProblem() {
   const q = p(), d = PUNC(q.display), el = $('problemExpr');
+  const head = t => (q.exam ? examLines(t).map(x => mathHTML(PUNC(x), true)).join('<br>') : mathHTML(PUNC(t), true));
   $('problemLabel').textContent = q.label;
   const cut = d.indexOf('　');
-  if (cut >= 0) el.innerHTML = mathHTML(d.slice(0, cut), true) + '<br><span class="nw">' + mathHTML(d.slice(cut + 1), true) + '</span>';
+  if (cut >= 0) el.innerHTML = head(q.display.slice(0, cut)) + '<br><span class="nw">' + mathHTML(d.slice(cut + 1), true) + '</span>';
   else if (!q.exam && FORMULA_ONLY.includes(q.mode)) el.innerHTML = '<span class="nw">' + mathHTML(d, true) + '</span>';
-  else el.innerHTML = mathHTML(d, true);
+  else el.innerHTML = head(q.display);
   el.classList.toggle('exam', !!q.exam);
   fitFormula();
 }
