@@ -262,8 +262,9 @@ letter-spacing: 4px; z-index: 20; animation: lvUp 1.8s forwards; pointer-events:
 .key { min-width: 0; max-width: 100%; overflow: hidden; }
 #game, #status, #message, #battle, #problem, #controls { min-width: 0; max-width: 100%; }
 #status .row { min-width: 0; gap: 4px; }
-#status .row .value { min-width: 0; overflow-wrap: anywhere; text-align: right; }
-#message, #problemExpr { overflow-wrap: anywhere; }
+#status .row .value { min-width: 0; word-break: keep-all; overflow-wrap: break-word; text-align: right; }   /* ことばの 途中で 折らない（空白で 折る） */
+#message { overflow-wrap: anywhere; }
+#problemExpr { overflow-wrap: break-word; }
 #status { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 #status .label { white-space: nowrap; }
 #status .row:not(.wide) .value { white-space: nowrap; }
@@ -971,7 +972,30 @@ function renderControls() {
 }
 
 // 選択肢の 文字が ボタンに 入りきらない ときは、文字を 小さく（13px まで）→ それでも 入らなければ 1列に して もう一度
+
+// 問題文の 式は 演算子の 前後で 改行しない（文字が 大きい 設定でも 式が 途中で 折れないように）
+function keepMath(root) {
+  if (!root) return;
+  const re = /[^\s，．、。]+(?:[  ][＝＋−×＜＞≦≧±][  ][^\s，．、。]+)+/g, nodes = [], made = [];
+  const tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let n;
+  while ((n = tw.nextNode())) if (!(n.parentNode.classList && n.parentNode.classList.contains('nwm'))) nodes.push(n);
+  const box = t => { const sp = document.createElement('span'); sp.className = 'nwm'; sp.style.whiteSpace = 'nowrap'; sp.textContent = t; return sp; };
+  for (const n of nodes) {   // 式の かたまり（a ＝ 7、(2 ＋ √3)x など）を 改行しない 箱に 入れる
+    const t = n.textContent; let m, last = 0; const frag = document.createDocumentFragment(); re.lastIndex = 0;
+    while ((m = re.exec(t))) { frag.appendChild(document.createTextNode(t.slice(last, m.index))); const sp = box(m[0]); made.push(sp); frag.appendChild(sp); last = m.index + m[0].length; }
+    if (last) { frag.appendChild(document.createTextNode(t.slice(last))); n.parentNode.replaceChild(frag, n); }
+  }
+  for (const sp of made) {   // 1行に 入りきらない 長い 式だけ、＝・不等号の 前で 改行して よい ことに する
+    if (sp.offsetWidth <= root.clientWidth) continue;
+    const parts = sp.textContent.split(/[  ](?=[＝＜＞≦≧][  ])/);
+    if (parts.length < 2) continue;
+    const frag = document.createDocumentFragment();
+    parts.forEach((x, i) => { if (i) frag.appendChild(document.createTextNode(' ')); frag.appendChild(box(x)); });
+    sp.parentNode.replaceChild(frag, sp);
+  }
+}
 function fitOpts() {
+  keepMath($('problemExpr'));
   const c = $('controls'), vis = optBtns.filter(b => !b.classList.contains('hidden'));
   c.classList.remove('one'); optBtns.forEach(b => { b.style.fontSize = ''; });
   if (!vis.length) return;
@@ -1043,9 +1067,14 @@ function drawLines(ctx, q, d, W, H) {
   ctx.font = 'bold ' + (12 * d) + 'px serif'; ctx.textBaseline = 'middle';
   // 線の 式と α・β（枠から はみ出さない。2つが かさなる ときは 下へ ずらす）
   const labs = [[m1, BLUE, 'α'], [m2, RED, 'β']].map(([k, col, nm]) => {
-    const t = Math.atan(k), r = H * 0.42, x = cx + Math.cos(t) * r, y = cy - Math.sin(t) * r;
-    const lab = lineY(C.NASU[m.k][nm === 'α' ? 0 : 1]) + '（' + nm + '）', tw = ctx.measureText(lab).width;
-    return { lab, col, x: Math.max(4 * d, Math.min(x + 4 * d, W - 4 * d - tw)), y: Math.max(10 * d, Math.min(H - 10 * d, y)), tw };
+    const t = Math.atan(k), lab = lineY(C.NASU[m.k][nm === 'α' ? 0 : 1]) + '（' + nm + '）', tw = ctx.measureText(lab).width;
+    // 線の 右に 置く。図の 幅に 入らない ときは 線に そって 原点の ほうへ ずらし、それでも だめなら 線の 左に（文字が 線に かさならない）
+    for (let f = 0.42; f >= 0.12; f -= 0.02) {
+      const x = cx + Math.cos(t) * H * f, y = cy - Math.sin(t) * H * f;
+      if (x + 4 * d + tw <= W - 4 * d && y >= 10 * d && y <= H - 10 * d) return { lab, col, x: x + 4 * d, y, tw };
+    }
+    const r = H * 0.42, x = cx + Math.cos(t) * r, y = Math.max(10 * d, Math.min(H - 10 * d, cy - Math.sin(t) * r));
+    return { lab, col, x: Math.max(4 * d, x - 6 * d - tw), y, tw };
   });
   const [A, B] = labs;
   if (Math.abs(A.y - B.y) < 16 * d && A.x < B.x + B.tw && B.x < A.x + A.tw) { const lo = A.y > B.y ? A : B, hi = lo === A ? B : A; lo.y = hi.y + 16 * d; }
