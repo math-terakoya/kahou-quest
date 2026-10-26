@@ -1126,6 +1126,16 @@ function drawLines(ctx, q, d, W, H) {
         if (x >= 4 * d && x + tw <= W - 4 * d && y >= 10 * d && y <= H - 10 * d && clear(x, y, tw, fs)) { const L = { lab, col, x, y, tw, fs, h: fs * d * 1.2 }; placed.push(L); return L; }
       }
     }
+    for (let fs = 11; fs >= 8; fs--) {   // 線の そばに なければ、図の 中で 線に いちばん 近い あいて いる 所
+      ctx.font = 'bold ' + (fs * d) + 'px serif';
+      const tw = ctx.measureText(lab).width, ax = cx + Math.cos(t) * H * 0.42, ay = cy - Math.sin(t) * H * 0.42;
+      let best = null, bd = Infinity;
+      for (let y = 10 * d; y <= H - 10 * d; y += 4 * d) for (let x = 4 * d; x + tw <= W - 4 * d; x += 4 * d) {
+        if (!clear(x, y, tw, fs)) continue;
+        const dd = Math.hypot(x + tw / 2 - ax, y - ay); if (dd < bd) { bd = dd; best = { lab, col, x, y, tw, fs, h: fs * d * 1.2 }; }
+      }
+      if (best) { placed.push(best); return best; }
+    }
     ctx.font = 'bold ' + (8 * d) + 'px serif';
     const tw = ctx.measureText(lab).width, r = H * 0.42, x = cx + Math.cos(t) * r, y = Math.max(10 * d, Math.min(H - 10 * d, cy - Math.sin(t) * r));
     return { lab, col, x: Math.max(4 * d, x - 6 * d - tw), y, tw, fs: 8 };
