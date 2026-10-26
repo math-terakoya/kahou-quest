@@ -1109,23 +1109,30 @@ function drawLines(ctx, q, d, W, H) {
   line(m1, 0, BLUE, 2.2); line(m2, 0, RED, 2.2);
   ctx.font = 'bold ' + (12 * d) + 'px serif'; ctx.textBaseline = 'middle';
   // 線の 式と α・β（枠から はみ出さない。2つが かさなる ときは 下へ ずらす）
+  // 文字の 四角が 2本の 線の どちらとも かさならないか
+  const placed = [];
+  const clear = (x0, yc, tw, fs) => { const h = fs * d * 1.2, y0 = yc - h / 2, y1 = yc + h / 2;
+    if (placed.some(p => x0 < p.x + p.tw + 4 * d && p.x < x0 + tw + 4 * d && y0 < p.y + p.h / 2 + 2 * d && p.y - p.h / 2 < y1 + 2 * d)) return false;   // 先に 置いた 名前とも かさならない
+    return [m1, m2].every(k => { if (Math.abs(k) < 1e-6) return cy < y0 || cy > y1;
+      const xa = cx + (cy - y0) / k, xb = cx + (cy - y1) / k; return Math.max(xa, xb) < x0 - 2 * d || Math.min(xa, xb) > x0 + tw + 2 * d; }); };
   const labs = [[m1, BLUE, 'α'], [m2, RED, 'β']].map(([k, col, nm]) => {
-    const t = Math.atan(k), lab = lineY(C.NASU[m.k][nm === 'α' ? 0 : 1]) + '（' + nm + '）', tw = ctx.measureText(lab).width;
-    // 線の 右に 置く。図の 幅に 入らない ときは 線に そって 原点の ほうへ ずらし、それでも だめなら 線の 左に（文字が 線に かさならない）
-    for (let f = 0.42; f >= 0.12; f -= 0.02) {
-      const x = cx + Math.cos(t) * H * f, y = cy - Math.sin(t) * H * f;
-      if (x + 4 * d + tw <= W - 4 * d && y >= 10 * d && y <= H - 10 * d) return { lab, col, x: x + 4 * d, y, tw };
+    const t = Math.atan(k), lab = lineY(C.NASU[m.k][nm === 'α' ? 0 : 1]) + '（' + nm + '）';
+    // 線の そばで、図の 中に 入り、どちらの 線にも かさならない ところ（線の 右 → 左、入らなければ 文字を 小さく 8px まで）
+    for (let fs = 12; fs >= 8; fs--) {
+      ctx.font = 'bold ' + (fs * d) + 'px serif';
+      const tw = ctx.measureText(lab).width;
+      for (const side of [1, -1]) for (let f = 0.42; f >= 0.12; f -= 0.02) {
+        const hh = fs * d * 0.6, dx = Math.abs(k) > 0.3 ? hh / Math.abs(k) : 0, px = cx + Math.cos(t) * H * f, y = cy - Math.sin(t) * H * f - (Math.abs(k) > 0.3 ? 0 : side * 2 * hh), x = side > 0 ? px + 4 * d + dx : px - 6 * d - dx - tw;   // 線から 文字の 高さの ぶん はなす
+        if (x >= 4 * d && x + tw <= W - 4 * d && y >= 10 * d && y <= H - 10 * d && clear(x, y, tw, fs)) { const L = { lab, col, x, y, tw, fs, h: fs * d * 1.2 }; placed.push(L); return L; }
+      }
     }
-    for (let f = 0.42; f >= 0.12; f -= 0.02) {   // 線の 左に 置ける ところ
-      const x = cx + Math.cos(t) * H * f, y = cy - Math.sin(t) * H * f;
-      if (x - 6 * d - tw >= 4 * d && y >= 10 * d && y <= H - 10 * d) return { lab, col, x: x - 6 * d - tw, y, tw };
-    }
-    const r = H * 0.42, x = cx + Math.cos(t) * r, y = Math.max(10 * d, Math.min(H - 10 * d, cy - Math.sin(t) * r));
-    return { lab, col, x: Math.max(4 * d, x - 6 * d - tw), y, tw };
+    ctx.font = 'bold ' + (8 * d) + 'px serif';
+    const tw = ctx.measureText(lab).width, r = H * 0.42, x = cx + Math.cos(t) * r, y = Math.max(10 * d, Math.min(H - 10 * d, cy - Math.sin(t) * r));
+    return { lab, col, x: Math.max(4 * d, x - 6 * d - tw), y, tw, fs: 8 };
   });
   const [A, B] = labs;
-  if (Math.abs(A.y - B.y) < 16 * d && A.x < B.x + B.tw && B.x < A.x + A.tw) { const lo = A.y > B.y ? A : B, hi = lo === A ? B : A; lo.y = hi.y + 16 * d; }
-  labs.forEach(L => { ctx.fillStyle = L.col; ctx.textAlign = 'left'; ctx.fillText(L.lab, L.x, L.y); });
+  if (!A.h || !B.h) { if (Math.abs(A.y - B.y) < 16 * d && A.x < B.x + B.tw && B.x < A.x + A.tw) { const lo = A.y > B.y ? A : B, hi = lo === A ? B : A; lo.y = hi.y + 16 * d; } }   // 置き場が なかった ときだけ ずらす
+  labs.forEach(L => { ctx.font = 'bold ' + (L.fs * d) + 'px serif'; ctx.fillStyle = L.col; ctx.textAlign = 'left'; ctx.fillText(L.lab, L.x, L.y); });
   if (state.reveal) {   // 2直線の あいだの 鋭角
     let a1 = Math.atan(m1), a2 = Math.atan(m2);
     if (Math.abs(a2 - a1) > Math.PI / 2) { if (a1 < a2) a1 += Math.PI; else a2 += Math.PI; }
