@@ -475,7 +475,7 @@ const TANEX = [
 ];
 // なす角：2直線 y ＝ m₁x、y ＝ m₂x（tan(β − α) が 特別な 値に なる 組）
 const NASU = [['−3', '2'], ['1', '2 ＋ √3'], ['1/2', '3'], ['3', '−2'], ['√3', '−√3'], ['−1', '2 ＋ √3']];
-const PAR = m => (m.startsWith(MINUS) || m.includes(' ') ? '(' + m + ')' : m);   // かけざんの 中は かっこ
+const PAR = m => (m.startsWith(MINUS) || m.includes(' ') ? '(' + m + ')' : m);   // かけ算の 中は かっこ
 const lineY = m => 'y ＝ ' + (m.includes(' ') ? '(' + m + ')' : m === '1' ? '' : m === MINUS + '1' ? MINUS : m) + 'x';   // y ＝ (2 ＋ √3)x、y ＝ x、y ＝ −x
 // 傾き（整数か 分数の 文字）→ ax ＋ by ＋ c ＝ 0 の a・b（a ＞ 0）
 function abOf(m) { const neg = m.startsWith(MINUS), [n, d] = (neg ? m.slice(1) : m).split('/').map(Number); return neg ? [n, d || 1] : [n, -(d || 1)]; }
